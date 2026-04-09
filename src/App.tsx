@@ -125,6 +125,11 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [performAutoSave]);
 
+  // 需求6：粘贴 JSON 导入弹窗状态
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [pasteJsonText, setPasteJsonText] = useState('');
+  const [pasteJsonError, setPasteJsonError] = useState('');
+
   // 快捷键处理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -184,6 +189,9 @@ function App() {
           break;
         case 't':
           setCurrentTool('triangle');
+          break;
+        case 'g':
+          setCurrentTool('pentagon');
           break;
         case 'r':
           setCurrentTool('rectangle');
@@ -298,13 +306,18 @@ function App() {
       state.projectName,
       state.nodes,
       state.connections,
-      state.constraints,  // 新增约束线导出
+      state.constraints,
       state.swimlanes,
       state.settings.monthWidth,
       state.settings.swimlaneHeight,
       state.startDate,
       state.endDate,
-      state.settings.timelineView || 'month'
+      state.settings.timelineView || 'month',
+      {
+        showIntervals: state.settings.showIntervals,
+        intervalUnit: state.settings.intervalUnit,
+        intervalDecimals: state.settings.intervalDecimals,
+      }
     );
     downloadFile(xml, `${state.projectName}.drawio`, 'application/xml');
   };
@@ -668,6 +681,47 @@ function App() {
     setShowConstraintInputDialog(false);
   };
 
+  // 需求6：粘贴 JSON 导入处理
+  const handleOpenPasteDialog = () => {
+    setPasteJsonText('');
+    setPasteJsonError('');
+    setShowPasteDialog(true);
+  };
+
+  const handlePasteImport = () => {
+    if (!pasteJsonText.trim()) {
+      setPasteJsonError('请粘贴 JSON 内容');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(pasteJsonText);
+      if (!parsed.nodes || !parsed.swimlanes) {
+        setPasteJsonError('JSON 格式不正确，缺少 nodes 或 swimlanes 字段');
+        return;
+      }
+      const data = importFromJSON(pasteJsonText);
+      const newId = uuidv4();
+      useCanvasStore.setState({
+        projectName: data.name || '导入的项目',
+        startDate: data.startDate,
+        endDate: data.endDate,
+        swimlanes: data.swimlanes,
+        nodes: data.nodes,
+        connections: data.connections || [],
+        constraints: data.constraints || [],
+        selectedNodeIds: [],
+        history: [],
+        historyIndex: -1,
+      });
+      setCurrentProjectId(newId);
+      setShowPasteDialog(false);
+      setPasteJsonText('');
+      showToastMessage('项目导入成功', 'success');
+    } catch {
+      setPasteJsonError('JSON 解析失败，请检查格式');
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* 工具栏 */}
@@ -683,6 +737,7 @@ function App() {
         onOpenConstraintPanel={() => setShowConstraintPanel(!showConstraintPanel)}
         onOpenVersionHistory={() => setShowVersionHistory(!showVersionHistory)}
         onOpenConnectionPanel={() => setShowConnectionPanel(!showConnectionPanel)}
+        onPasteJSON={handleOpenPasteDialog}
         showConstraintPanel={showConstraintPanel}
         showVersionHistory={showVersionHistory}
         showConnectionPanel={showConnectionPanel}
@@ -726,7 +781,7 @@ function App() {
       {/* 状态栏 */}
       <div className="h-6 bg-white border-t border-gray-200 flex items-center px-4 text-xs text-gray-500">
         <span className="mr-4">
-          工具: {currentTool === 'select' ? '选择' : currentTool === 'diamond' ? '菱形' : currentTool === 'triangle' ? '三角形' : currentTool === 'rectangle' ? '长方形' : '连线'}
+          工具: {currentTool === 'select' ? '选择' : currentTool === 'diamond' ? '菱形' : currentTool === 'triangle' ? '三角形' : currentTool === 'rectangle' ? '长方形' : currentTool === 'pentagon' ? '阀门' : currentTool === 'connection' ? '连线' : currentTool}
         </span>
         <span className="mr-4">节点: {nodes.length}</span>
         <span className="mr-4">连接: {connections.length}</span>
@@ -846,6 +901,50 @@ function App() {
               </button>
               <button onClick={handleConfirmConstraint} className="btn btn-primary">
                 确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 需求6：粘贴 JSON 导入弹窗 */}
+      {showPasteDialog && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowPasteDialog(false)}>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-[480px]" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2">粘贴 JSON 导入项目</h3>
+            <p className="text-sm text-gray-500 mb-4">将项目的 JSON 数据粘贴到下方，点击「新建项目」即可导入。</p>
+            <textarea
+              className="w-full h-48 border border-gray-300 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder='粘贴 JSON 内容...'
+              value={pasteJsonText}
+              onChange={(e) => {
+                setPasteJsonText(e.target.value);
+                setPasteJsonError('');
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+              onKeyUp={(e) => e.stopPropagation()}
+              autoFocus
+            />
+            {pasteJsonError && (
+              <p className="text-sm text-red-500 mt-2">{pasteJsonError}</p>
+            )}
+            <div className="flex gap-2 justify-end mt-4">
+              <button
+                onClick={() => {
+                  setShowPasteDialog(false);
+                  setPasteJsonText('');
+                  setPasteJsonError('');
+                }}
+                className="btn"
+              >
+                取消
+              </button>
+              <button
+                onClick={handlePasteImport}
+                className="btn btn-primary"
+                disabled={!pasteJsonText.trim()}
+              >
+                新建项目
               </button>
             </div>
           </div>

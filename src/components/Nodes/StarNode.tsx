@@ -47,6 +47,15 @@ export const StarNode: React.FC<StarNodeProps> = ({
         onDragEnd(pos.x, pos.y);
       }}
     >
+      {/* 日期白底 */}
+      <Rect
+        x={-32}
+        y={-size - 18 - 2}
+        width={64}
+        height={14}
+        fill="rgba(255,255,255,0.85)"
+        cornerRadius={3}
+      />
       {/* 日期显示在节点上方 */}
       <Text
         text={formatShortDate(node.date)}
@@ -84,6 +93,15 @@ export const StarNode: React.FC<StarNodeProps> = ({
         shadowOffset={{ x: 0, y: 2 }}
       />
 
+      {/* 名称白底 */}
+      <Rect
+        x={-42}
+        y={size + 4 - 1}
+        width={84}
+        height={16}
+        fill="rgba(255,255,255,0.85)"
+        cornerRadius={3}
+      />
       {/* 节点名称 */}
       <Text
         text={node.name}

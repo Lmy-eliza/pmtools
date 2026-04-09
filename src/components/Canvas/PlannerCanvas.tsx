@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Rect, Line, Text, Group } from 'react-konva';
 import { useCanvasStore } from '../../stores/canvasStore';
-import { xToDate, formatDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
+import { xToDate, formatDate, formatShortDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
 import { DiamondNode } from '../Nodes/DiamondNode';
 import { TriangleNode } from '../Nodes/TriangleNode';
 import { RectangleNode } from '../Nodes/RectangleNode';
@@ -9,6 +9,7 @@ import { StarNode } from '../Nodes/StarNode';
 import { CircleNode } from '../Nodes/CircleNode';
 import { HexagonNode } from '../Nodes/HexagonNode';
 import { EmojiNode } from '../Nodes/EmojiNode';
+import { PentagonNode } from '../Nodes/PentagonNode';
 import { ConnectionLine } from '../Nodes/ConnectionLine';
 import { defaultColors } from '../../data/presets';
 import { GripVertical, Trash2 } from 'lucide-react';
@@ -48,6 +49,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
   const [isBoxSelecting, setIsBoxSelecting] = useState(false);
   const [boxSelectStart, setBoxSelectStart] = useState<{ x: number; y: number } | null>(null);
   const [boxSelectEnd, setBoxSelectEnd] = useState<{ x: number; y: number } | null>(null);
+  // 需求3C：悬停信息卡
+  const [hoverTooltip, setHoverTooltip] = useState<{ x: number; y: number; node: PlanNode } | null>(null);
 
   const {
     projectName,
@@ -74,6 +77,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     currentTool,
     connectionStart,
     setConnectionStart,
+    setCurrentTool,
     addConnection,
     applyConstraints,
   } = useCanvasStore();
@@ -175,7 +179,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     if (currentTool === 'select') {
       clearSelection();
       setConnectionStart(null);
-    } else if (['diamond', 'triangle', 'rectangle', 'star', 'circle', 'hexagon', 'emoji'].includes(currentTool)) {
+    } else if (['diamond', 'triangle', 'rectangle', 'star', 'circle', 'hexagon', 'emoji', 'pentagon'].includes(currentTool)) {
       // 添加新节点 - 检查点击位置是否在泳道区域内（Stage内部x从0开始）
       if (pos.x > 0 && pos.y > HEADER_HEIGHT) {
         // 防止误添加：检查是否点击在已选中节点附近
@@ -194,7 +198,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
         const swimlane = swimlanes[swimlaneIndex];
 
         if (swimlane) {
-          const nodeType = currentTool as 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji';
+          const nodeType = currentTool as 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'pentagon';
 
           // 获取 currentEmoji 用于 emoji 节点
           const state = useCanvasStore.getState();
@@ -226,6 +230,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
               case 'circle': return '节点';
               case 'hexagon': return '阶段';
               case 'emoji': return '表情';
+              case 'pentagon': return 'G0';
               default: return '节点';
             }
           };
@@ -242,6 +247,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
             endDate: nodeEndDate,
             emoji: nodeType === 'emoji' ? state.currentEmoji : undefined,
           });
+          setCurrentTool('select');
         }
       }
     }
@@ -451,7 +457,25 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
       node: nodeWithCalculatedX,
       isSelected,
       isConnectionStart,
-      onClick: () => handleNodeClick(node.id),
+      onClick: () => {
+        handleNodeClick(node.id);
+        // 需求3B：点击置顶 - 找到节点的 Konva Group 并置顶
+        const stage = stageRef.current;
+        if (stage) {
+          const layer = stage.findOne('Layer');
+          if (layer) {
+            const groups = layer.find('Group');
+            const targetGroup = groups.find((g: any) => {
+              const pos = g.position();
+              return Math.abs(pos.x - nodeWithCalculatedX.x) < 1 && Math.abs(pos.y - nodeWithCalculatedX.y) < 1;
+            });
+            if (targetGroup) {
+              targetGroup.moveToTop();
+              layer.batchDraw();
+            }
+          }
+        }
+      },
       onDrag: (x: number, y: number) => handleNodeDrag(node.id, x, y),
       onDragEnd: (x: number, y: number) => handleNodeDragEnd(node.id, x, y),
     };
@@ -475,6 +499,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
         return <CircleNode {...commonProps} />;
       case 'hexagon':
         return <HexagonNode {...commonProps} />;
+      case 'pentagon':
+        return <PentagonNode {...commonProps} />;
       case 'emoji':
         return <EmojiNode {...commonProps} />;
       default:
@@ -651,6 +677,34 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           width={Math.max(dimensions.width, totalWidth)}
           height={Math.max(dimensions.height, totalHeight)}
           onClick={handleStageClick}
+          onMouseMove={(e) => {
+            const stage = e.target.getStage();
+            const pos = stage?.getPointerPosition();
+
+            // 需求23：框选移动
+            if (isBoxSelecting && pos) {
+              setBoxSelectEnd({ x: pos.x / settings.zoom, y: pos.y / settings.zoom });
+            }
+
+            // 需求3C：悬停信息卡
+            if (!pos) { setHoverTooltip(null); return; }
+            const scaledPos = { x: pos.x / settings.zoom, y: pos.y / settings.zoom };
+            const hoveredNode = nodes.find(node => {
+              const calcX = node.type === 'rectangle'
+                ? dateToX(node.date, startDate, unitWidth, 0, timelineView) + (node.width || 100) / 2
+                : dateToX(node.date, startDate, unitWidth, 0, timelineView);
+              const nodeW = node.width || (node.type === 'rectangle' ? 100 : 40);
+              const nodeH = node.type === 'rectangle' ? 32 : 40;
+              return scaledPos.x >= calcX - nodeW / 2 && scaledPos.x <= calcX + nodeW / 2
+                && scaledPos.y >= node.y - nodeH / 2 && scaledPos.y <= node.y + nodeH / 2;
+            });
+            if (hoveredNode) {
+              setHoverTooltip({ x: pos.x + leftPanelWidth, y: pos.y, node: hoveredNode });
+            } else {
+              setHoverTooltip(null);
+            }
+          }}
+          onMouseLeave={() => setHoverTooltip(null)}
           onMouseDown={(e) => {
             // 需求23：框选开始
             if (currentTool === 'select') {
@@ -679,17 +733,6 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
                     setBoxSelectEnd({ x: scaledPos.x, y: scaledPos.y });
                   }
                 }
-              }
-            }
-          }}
-          onMouseMove={(e) => {
-            // 需求23：框选移动
-            if (isBoxSelecting) {
-              const stage = e.target.getStage();
-              const pos = stage?.getPointerPosition();
-              if (pos) {
-                // 问题4修复：将屏幕坐标除以zoom转换为画布坐标
-                setBoxSelectEnd({ x: pos.x / settings.zoom, y: pos.y / settings.zoom });
               }
             }
           }}
@@ -1093,6 +1136,27 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           className="fixed left-1/2 top-20 -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium"
         >
           📅 {dragTooltip.date}
+        </div>
+      )}
+
+      {/* 需求3C：悬停信息卡 */}
+      {hoverTooltip && (
+        <div
+          className="absolute bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 z-50 pointer-events-none text-xs"
+          style={{
+            left: hoverTooltip.x + 12,
+            top: hoverTooltip.y - 10,
+            maxWidth: 200,
+          }}
+        >
+          <div className="font-semibold text-gray-800">{hoverTooltip.node.name}</div>
+          <div className="text-gray-500 mt-0.5">
+            {formatShortDate(hoverTooltip.node.date)}
+            {hoverTooltip.node.endDate && ` - ${formatShortDate(hoverTooltip.node.endDate)}`}
+          </div>
+          <div className="text-gray-400 mt-0.5">
+            {swimlanes.find(s => s.id === hoverTooltip.node.swimlaneId)?.name || ''}
+          </div>
         </div>
       )}
       </div>

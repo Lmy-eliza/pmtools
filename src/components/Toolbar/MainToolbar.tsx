@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Diamond,
   Triangle,
@@ -31,6 +31,8 @@ import {
   Route,
   Shapes,
   ArrowRight,
+  Home,
+  ClipboardPaste,
 } from 'lucide-react';
 import { useCanvasStore } from '../../stores/canvasStore';
 import type { ToolType, TimelineView } from '../../types';
@@ -85,6 +87,7 @@ interface MainToolbarProps {
   onOpenConstraintPanel: () => void;
   onOpenVersionHistory: () => void;
   onOpenConnectionPanel?: () => void;  // 问题10：打开连线清单面板
+  onPasteJSON?: () => void;  // 需求6：粘贴 JSON 导入
   showConstraintPanel?: boolean;
   showVersionHistory?: boolean;
   showConnectionPanel?: boolean;  // 问题10：连线清单面板状态
@@ -102,6 +105,7 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
   onOpenConstraintPanel,
   onOpenVersionHistory,
   onOpenConnectionPanel,
+  onPasteJSON,
   showConstraintPanel,
   showVersionHistory,
   showConnectionPanel,
@@ -125,6 +129,32 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [showConnectionMenu, setShowConnectionMenu] = useState(false);  // 问题10：连接线菜单
   const [customEmoji, setCustomEmoji] = useState('');
+
+  // 需求5：下拉菜单 ref，用于检测点击外部关闭
+  const moreShapesRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
+  const connectionMenuRef = useRef<HTMLDivElement>(null);
+
+  // 需求5：点击外部关闭所有下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreShapesRef.current && !moreShapesRef.current.contains(e.target as Node)) {
+        setShowMoreShapes(false);
+      }
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
+        setShowViewMenu(false);
+      }
+      if (connectionMenuRef.current && !connectionMenuRef.current.contains(e.target as Node)) {
+        setShowConnectionMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleZoomIn = () => {
     updateSettings({ zoom: Math.min(settings.zoom + 0.1, 2) });
@@ -176,11 +206,12 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
   const tools: { type: ToolType; icon: React.ReactNode; label: string }[] = [
     { type: 'select', icon: <MousePointer2 size={18} />, label: '选择 (V)' },
     { type: 'diamond', icon: <Diamond size={18} />, label: '菱形节点 (D)' },
-    { type: 'triangle', icon: <Triangle size={18} />, label: '三角形节点 (T)' },
+    { type: 'pentagon', icon: <Home size={18} />, label: '阀门节点 (G)' },
     { type: 'rectangle', icon: <Square size={18} />, label: '长方形节点 (R)' },
   ];
 
   const moreShapes = [
+    { type: 'triangle' as ToolType, icon: <Triangle size={16} />, label: '三角形' },
     { type: 'star' as ToolType, icon: <Star size={16} />, label: '五角星' },
     { type: 'circle' as ToolType, icon: <Circle size={16} />, label: '圆形' },
     { type: 'hexagon' as ToolType, icon: <Hexagon size={16} />, label: '六边形' },
@@ -219,7 +250,7 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
       ))}
 
       {/* 问题10：连接线下拉菜单 */}
-      <div className="relative">
+      <div className="relative" ref={connectionMenuRef}>
         <button
           className={`toolbar-btn flex items-center gap-1 ${showConnectionMenu || currentTool === 'connection' ? 'active' : ''}`}
           onClick={() => setShowConnectionMenu(!showConnectionMenu)}
@@ -270,11 +301,11 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
       </div>
 
       {/* 更多形状 - 问题9修复：使用Shapes图标 */}
-      <div className="relative">
+      <div className="relative" ref={moreShapesRef}>
         <ToolButton
           icon={<Shapes size={18} />}
           label="更多形状"
-          active={showMoreShapes || ['star', 'circle', 'hexagon', 'emoji'].includes(currentTool)}
+          active={showMoreShapes || ['triangle', 'star', 'circle', 'hexagon', 'emoji'].includes(currentTool)}
           onClick={() => setShowMoreShapes(!showMoreShapes)}
         />
         {showMoreShapes && (
@@ -356,7 +387,7 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
       <div className="toolbar-divider" />
 
       {/* 需求18：时间轴视图切换 */}
-      <div className="relative">
+      <div className="relative" ref={viewMenuRef}>
         <button
           className={`toolbar-btn flex items-center gap-1 ${showViewMenu ? 'active' : ''}`}
           onClick={() => setShowViewMenu(!showViewMenu)}
@@ -396,7 +427,7 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
       />
 
       {/* 更多功能下拉菜单 */}
-      <div className="relative">
+      <div className="relative" ref={moreMenuRef}>
         <button
           className={`toolbar-btn flex items-center gap-1 ${showMoreMenu ? 'active' : ''}`}
           onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -427,6 +458,21 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
               <Download size={16} />
               <span className="text-sm">导出 JSON</span>
             </button>
+            {onPasteJSON && (
+              <>
+                <hr className="my-1" />
+                <button
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded w-full text-left"
+                  onClick={() => {
+                    onPasteJSON();
+                    setShowMoreMenu(false);
+                  }}
+                >
+                  <ClipboardPaste size={16} />
+                  <span className="text-sm">粘贴 JSON</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

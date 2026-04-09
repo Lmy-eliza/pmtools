@@ -122,6 +122,15 @@ export const RectangleNode: React.FC<RectangleNodeProps> = ({
       }}
       style={{ cursor: 'pointer' }}
     >
+      {/* 日期白底 */}
+      <Rect
+        x={-(width + 40) / 2 + 10}
+        y={-height / 2 - 18 - 2}
+        width={width + 20}
+        height={14}
+        fill="rgba(255,255,255,0.85)"
+        cornerRadius={3}
+      />
       {/* 起止日期显示在节点上方 */}
       <Text
         text={dateText}
