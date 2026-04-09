@@ -97,53 +97,6 @@ function getDefaultPathConfig(sourceNode: PlanNode, targetNode: PlanNode): { sou
 }
 
 /**
- * 计算节点在指定方向的边缘连接点坐标
- * 返回 {x, y} 绝对坐标
- */
-function getNodeEdgePoint(
-  node: PlanNode,
-  nodeX: number,
-  nodeY: number,
-  direction: 'left' | 'right'
-): { x: number; y: number } {
-  let w = 40;
-  let h = 40;
-
-  switch (node.type) {
-    case 'diamond': w = 50; h = 50; break;
-    case 'triangle': w = 40; h = 35; break;
-    case 'rectangle': w = node.width || 100; h = 32; break;
-    case 'star': w = 50; h = 50; break;
-    case 'circle': w = 40; h = 40; break;
-    case 'hexagon': w = 50; h = 45; break;
-    case 'pentagon': w = 40; h = 46; break;
-    case 'emoji': w = 40; h = 40; break;
-  }
-
-  // 节点中心
-  const cy = nodeY;
-
-  // 五边形特殊处理：连接点在矩形区域（顶部到腰部）的中部
-  if (node.type === 'pentagon') {
-    const topY = cy - h / 2;     // 顶部
-    const waistY = cy + h * 30 / 46 - h / 2;  // 腰部
-    const midY = (topY + waistY) / 2;  // 中部
-    if (direction === 'right') {
-      return { x: nodeX + w / 2, y: midY };
-    } else {
-      return { x: nodeX - w / 2, y: midY };
-    }
-  }
-
-  // 其他形状：从左/右侧边缘中点出/入
-  if (direction === 'right') {
-    return { x: nodeX + w / 2, y: cy };
-  } else {
-    return { x: nodeX - w / 2, y: cy };
-  }
-}
-
-/**
  * 将 Emoji 转换为 HTML 实体（需求13：修复Emoji导出黑块）
  */
 function encodeEmoji(text: string): string {
