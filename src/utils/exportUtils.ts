@@ -332,11 +332,11 @@ export function exportToDrawio(
         break;
       case 'pentagon':
         // 阀门节点：使用 drawio 内置 offPageConnector（离页连接符 = homeplate 形状）
-        // 宽高比调整为更瘦高，接近网页端 PentagonNode 的比例（w=40, 矩形区30 + 尖角16 = 46）
-        // offPageConnector 默认尖角约占 1/5 高度，加大 height 使尖角更明显
-        width = 44;
-        height = 52;
-        style = `shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=${node.color};strokeColor=${node.color};fontColor=#1d1d1f;fontSize=9;verticalAlign=middle;labelBackgroundColor=none;`;
+        // 网页端 PentagonNode: 半宽w=20 → 全宽40, 高度topY=-24到tipY=22 → 46
+        // 导出尺寸与网页端保持一致
+        width = 40;
+        height = 46;
+        style = `shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=${node.color};strokeColor=${node.color};fontColor=#1d1d1f;fontSize=9;verticalAlign=middle;labelBackgroundColor=none;overflow=visible;`;
         break;
       case 'emoji':
         // 需求13：使用HTML实体编码Emoji，避免黑块
@@ -372,6 +372,25 @@ export function exportToDrawio(
       </mxCell>
       `);
       return;  // 跳过后面的通用节点渲染（不需要外部日期和名称标签）
+    } else if (node.type === 'rectangle') {
+      // 活动条：名称写入 value，白色文字在蓝色条内部居中（与网页端一致）
+      cells.push(`
+      <mxCell id="${cellId}" value="${escapeXml(node.name)}" style="${style}" vertex="1" parent="1">
+        <mxGeometry x="${x}" y="${y}" width="${width}" height="${height}" as="geometry"/>
+      </mxCell>
+    `);
+      // 日期标签仍在节点上方
+      const dateLabelId = getId();
+      let dateLabelText = dateStr;
+      if (node.endDate) {
+        dateLabelText = `${formatShortDate(node.date)}-${formatShortDate(node.endDate)}`;
+      }
+      cells.push(`
+      <mxCell id="${dateLabelId}" value="${escapeXml(dateLabelText)}" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=bottom;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#666666;" vertex="1" parent="1">
+        <mxGeometry x="${x - 10}" y="${y - 18}" width="${width + 20}" height="16" as="geometry"/>
+      </mxCell>
+    `);
+      return;  // 跳过后面的通用节点渲染（不需要下方独立名称标签）
     } else {
       cells.push(`
       <mxCell id="${cellId}" value="" style="${style}" vertex="1" parent="1">
@@ -380,12 +399,9 @@ export function exportToDrawio(
     `);
     }
 
-    // 日期标签（在节点上方，无底色）
+    // 日期标签（在节点上方，无底色）— rectangle 和 pentagon 已在前面 return
     const dateLabelId = getId();
-    let dateLabelText = dateStr;
-    if (node.type === 'rectangle' && node.endDate) {
-      dateLabelText = `${formatShortDate(node.date)}-${formatShortDate(node.endDate)}`;
-    }
+    const dateLabelText = dateStr;
     cells.push(`
       <mxCell id="${dateLabelId}" value="${escapeXml(dateLabelText)}" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=bottom;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#666666;" vertex="1" parent="1">
         <mxGeometry x="${x - 10}" y="${y - 18}" width="${width + 20}" height="16" as="geometry"/>
