@@ -1,5 +1,6 @@
 import type { PlanNode, Connection, Swimlane, TimeConstraint } from '../types';
 import { formatShortDate, generateTimelineUnits, formatTimelineUnit, groupMonthsByYear, getUnitWidth, dateToX } from './dateUtils';
+import { differenceInDays } from 'date-fns';
 
 /**
  * 转义 XML 特殊字符
@@ -11,6 +12,88 @@ function escapeXml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+/**
+ * 锚点位置映射为 drawio 的 exit/entry 参数
+ * 返回如 "exitX=1;exitY=0.5;exitPerimeter=0;" 的样式字符串片段
+ */
+function anchorToExitStyle(anchor: 'top' | 'bottom' | 'left' | 'right', nodeType?: string): string {
+  // pentagon 节点的连接点在矩形区域中部（y≈0.35），而非几何中心
+  if (nodeType === 'pentagon') {
+    switch (anchor) {
+      case 'right':  return 'exitX=1;exitY=0.35;exitPerimeter=0;';
+      case 'left':   return 'exitX=0;exitY=0.35;exitPerimeter=0;';
+      case 'bottom': return 'exitX=0.5;exitY=1;exitPerimeter=0;';
+      case 'top':    return 'exitX=0.5;exitY=0;exitPerimeter=0;';
+    }
+  }
+  switch (anchor) {
+    case 'right':  return 'exitX=1;exitY=0.5;exitPerimeter=0;';
+    case 'left':   return 'exitX=0;exitY=0.5;exitPerimeter=0;';
+    case 'bottom': return 'exitX=0.5;exitY=1;exitPerimeter=0;';
+    case 'top':    return 'exitX=0.5;exitY=0;exitPerimeter=0;';
+  }
+}
+
+function anchorToEntryStyle(anchor: 'top' | 'bottom' | 'left' | 'right', nodeType?: string): string {
+  if (nodeType === 'pentagon') {
+    switch (anchor) {
+      case 'right':  return 'entryX=1;entryY=0.35;entryPerimeter=0;';
+      case 'left':   return 'entryX=0;entryY=0.35;entryPerimeter=0;';
+      case 'bottom': return 'entryX=0.5;entryY=1;entryPerimeter=0;';
+      case 'top':    return 'entryX=0.5;entryY=0;entryPerimeter=0;';
+    }
+  }
+  switch (anchor) {
+    case 'right':  return 'entryX=1;entryY=0.5;entryPerimeter=0;';
+    case 'left':   return 'entryX=0;entryY=0.5;entryPerimeter=0;';
+    case 'bottom': return 'entryX=0.5;entryY=1;entryPerimeter=0;';
+    case 'top':    return 'entryX=0.5;entryY=0;entryPerimeter=0;';
+  }
+}
+
+/**
+ * 获取锚点的绝对坐标（与 ConnectionLine.tsx getAnchorPosition 一致）
+ */
+function getAnchorAbsolutePosition(
+  node: PlanNode,
+  anchor: 'top' | 'bottom' | 'left' | 'right',
+  nodeX: number  // 导出计算后的 X 中心坐标
+): { x: number; y: number } {
+  const width = node.type === 'rectangle' ? (node.width || 100) : 40;
+  const height = node.type === 'rectangle' ? 32 : (node.type === 'pentagon' ? 46 : (node.type === 'diamond' ? 50 : 40));
+  const GAP = 3;
+
+  switch (anchor) {
+    case 'top':    return { x: nodeX, y: node.y - height / 2 - GAP };
+    case 'bottom': return { x: nodeX, y: node.y + height / 2 + GAP };
+    case 'left':   return { x: nodeX - width / 2 - GAP, y: node.y };
+    case 'right':  return { x: nodeX + width / 2 + GAP, y: node.y };
+  }
+}
+
+/**
+ * 生成默认路径配置（与 ConnectionLine.tsx getDefaultPathConfig 一致）
+ */
+function getDefaultPathConfig(sourceNode: PlanNode, targetNode: PlanNode): { sourceAnchor: 'top' | 'bottom' | 'left' | 'right'; targetAnchor: 'top' | 'bottom' | 'left' | 'right'; bendPoints?: Array<{ rx: number; ry: number }> } {
+  const dx = targetNode.x - sourceNode.x;
+  const dy = targetNode.y - sourceNode.y;
+
+  // 同泳道（水平连接）
+  if (Math.abs(dy) < 10) {
+    return {
+      sourceAnchor: dx > 0 ? 'right' : 'left',
+      targetAnchor: dx > 0 ? 'left' : 'right',
+    };
+  }
+
+  // 跨泳道（L 形连接）
+  return {
+    sourceAnchor: dy > 0 ? 'bottom' : 'top',
+    targetAnchor: dx > 0 ? 'left' : 'right',
+    bendPoints: [{ rx: 0, ry: 1 }],
+  };
 }
 
 /**
@@ -46,7 +129,8 @@ export function exportToDrawio(
   swimlaneHeight: number,
   startDate?: Date,
   endDate?: Date,
-  timelineView: 'day' | 'week' | 'month' | 'quarter' = 'month'
+  timelineView: 'day' | 'week' | 'month' | 'quarter' = 'month',
+  intervalSettings?: { showIntervals: boolean; intervalUnit: 'day' | 'week' | 'month'; intervalDecimals: 0 | 1 | 2 }
 ): string {
   const YEAR_ROW_HEIGHT = 24;
   const UNIT_ROW_HEIGHT = 36;
@@ -246,6 +330,14 @@ export function exportToDrawio(
         width = 50;
         height = 45;
         break;
+      case 'pentagon':
+        // 阀门节点：使用 drawio 内置 offPageConnector（离页连接符 = homeplate 形状）
+        // 网页端 PentagonNode: 半宽w=20 → 全宽40, 高度topY=-24到tipY=22 → 46
+        // 导出尺寸与网页端保持一致
+        width = 40;
+        height = 46;
+        style = `shape=offPageConnector;whiteSpace=wrap;html=1;fillColor=${node.color};strokeColor=${node.color};fontColor=#1d1d1f;fontSize=9;verticalAlign=middle;labelBackgroundColor=none;overflow=visible;`;
+        break;
       case 'emoji':
         // 需求13：使用HTML实体编码Emoji，避免黑块
         style = `text;html=1;align=center;verticalAlign=middle;fontSize=24;fillColor=none;strokeColor=none;`;
@@ -270,6 +362,35 @@ export function exportToDrawio(
         <mxGeometry x="${x}" y="${y}" width="${width}" height="${height}" as="geometry"/>
       </mxCell>
     `);
+    } else if (node.type === 'pentagon') {
+      // pentagon：使用 offPageConnector 五边形，文字嵌入内部（名称+日期双行）
+      // HTML 标签必须经过 XML 实体转义，drawio 的 html=1 模式会自动解码渲染
+      const pentValue = `&lt;b&gt;${escapeXml(node.name)}&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#374151&quot;&gt;${escapeXml(dateStr)}&lt;/font&gt;`;
+      cells.push(`
+      <mxCell id="${cellId}" value="${pentValue}" style="${style}" vertex="1" parent="1">
+        <mxGeometry x="${x}" y="${y}" width="${width}" height="${height}" as="geometry"/>
+      </mxCell>
+      `);
+      return;  // 跳过后面的通用节点渲染（不需要外部日期和名称标签）
+    } else if (node.type === 'rectangle') {
+      // 活动条：名称写入 value，白色文字在蓝色条内部居中（与网页端一致）
+      cells.push(`
+      <mxCell id="${cellId}" value="${escapeXml(node.name)}" style="${style}" vertex="1" parent="1">
+        <mxGeometry x="${x}" y="${y}" width="${width}" height="${height}" as="geometry"/>
+      </mxCell>
+    `);
+      // 日期标签仍在节点上方
+      const dateLabelId = getId();
+      let dateLabelText = dateStr;
+      if (node.endDate) {
+        dateLabelText = `${formatShortDate(node.date)}-${formatShortDate(node.endDate)}`;
+      }
+      cells.push(`
+      <mxCell id="${dateLabelId}" value="${escapeXml(dateLabelText)}" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=bottom;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#666666;" vertex="1" parent="1">
+        <mxGeometry x="${x - 10}" y="${y - 18}" width="${width + 20}" height="16" as="geometry"/>
+      </mxCell>
+    `);
+      return;  // 跳过后面的通用节点渲染（不需要下方独立名称标签）
     } else {
       cells.push(`
       <mxCell id="${cellId}" value="" style="${style}" vertex="1" parent="1">
@@ -278,12 +399,9 @@ export function exportToDrawio(
     `);
     }
 
-    // 日期标签（在节点上方，无底色）
+    // 日期标签（在节点上方，无底色）— rectangle 和 pentagon 已在前面 return
     const dateLabelId = getId();
-    let dateLabelText = dateStr;
-    if (node.type === 'rectangle' && node.endDate) {
-      dateLabelText = `${formatShortDate(node.date)}-${formatShortDate(node.endDate)}`;
-    }
+    const dateLabelText = dateStr;
     cells.push(`
       <mxCell id="${dateLabelId}" value="${escapeXml(dateLabelText)}" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=bottom;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#666666;" vertex="1" parent="1">
         <mxGeometry x="${x - 10}" y="${y - 18}" width="${width + 20}" height="16" as="geometry"/>
@@ -299,7 +417,7 @@ export function exportToDrawio(
     `);
   });
 
-  // 添加连接线 - 使用直角折线样式，箭头指向节点边缘中点
+  // 添加连接线 - 使用锚点 + L形折线路由
   connections.forEach((conn) => {
     const sourceId = nodeIdMap.get(conn.sourceNodeId);
     const targetId = nodeIdMap.get(conn.targetNodeId);
@@ -307,34 +425,24 @@ export function exportToDrawio(
     if (sourceId && targetId) {
       const connId = getId();
 
-      // 获取源节点和目标节点，计算连线方向
+      // 获取源节点和目标节点
       const sourceNode = nodes.find(n => n.id === conn.sourceNodeId);
       const targetNode = nodes.find(n => n.id === conn.targetNodeId);
+      if (!sourceNode || !targetNode) return;
 
-      // 使用 orthogonalEdgeStyle 实现直角折线
-      let style = 'edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;html=1;jettySize=auto;';
+      // 获取路径配置（优先使用用户自定义，否则生成默认配置）
+      const pathConfig = conn.pathConfig || getDefaultPathConfig(sourceNode, targetNode);
 
-      // 根据节点位置设置箭头的出口和入口点（使用重新计算的坐标）
-      // exitX/exitY: 从源节点的哪个位置出发 (0=左, 0.5=中, 1=右)
-      // entryX/entryY: 到达目标节点的哪个位置 (0=左, 0.5=中, 1=右)
-      if (sourceNode && targetNode && startDate) {
-        const sourceX = getNodeExportX(sourceNode);
-        const targetX = getNodeExportX(targetNode);
-        if (targetX > sourceX) {
-          // 目标在源的右侧：从右边出，到左边进
-          style += 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;';
-        } else {
-          // 目标在源的左侧：从左边出，到右边进
-          style += 'exitX=0;exitY=0.5;entryX=1;entryY=0.5;';
-        }
-      } else {
-        // 默认设置
-        style += 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;';
-      }
+      // 计算导出 X 坐标
+      const sourceX = startDate ? getNodeExportX(sourceNode) : sourceNode.x;
+      const targetX = startDate ? getNodeExportX(targetNode) : targetNode.x;
 
-      style += 'endArrow=classic;endFill=1;endSize=8;'; // 统一箭头样式
+      // 构建 style - 锚点方向
+      let style = 'edgeStyle=none;html=1;';
+      style += anchorToExitStyle(pathConfig.sourceAnchor, sourceNode.type);
+      style += anchorToEntryStyle(pathConfig.targetAnchor, targetNode.type);
 
-      // 关键路径使用红色
+      // 关键路径使用红色粗线
       if (conn.isCriticalPath) {
         style += 'strokeColor=#FF3B30;strokeWidth=3;';
       } else if (conn.color) {
@@ -343,22 +451,76 @@ export function exportToDrawio(
         style += 'strokeColor=#374151;';
       }
 
-      // 根据线条样式设置
+      // 虚线样式
       if (conn.style === 'dashed') {
         style += 'dashed=1;dashPattern=8 4;';
       } else if (conn.style === 'dotted') {
         style += 'dashed=1;dashPattern=2 4;';
       }
 
+      // 箭头
+      style += 'endArrow=classic;endFill=1;endSize=8;';
+
+      // 计算间隔文字
+      let connLabel = '';
+      let labelColor = '#6b7280';
+      let labelBold = false;
+      if (intervalSettings?.showIntervals) {
+        const daysDiff = differenceInDays(targetNode.date, sourceNode.date);
+        if (daysDiff !== 0) {
+          let value: number;
+          let unitLabel: string;
+          switch (intervalSettings.intervalUnit) {
+            case 'day': value = daysDiff; unitLabel = '天'; break;
+            case 'week': value = daysDiff / 7; unitLabel = '周'; break;
+            default: value = daysDiff / 30; unitLabel = '月';
+          }
+          connLabel = `${Math.abs(value).toFixed(intervalSettings.intervalDecimals)}${unitLabel}`;
+          if (conn.isCriticalPath) {
+            labelColor = '#FF3B30';
+            labelBold = true;
+          }
+        }
+      }
+
+      // 计算 bendPoints 绝对坐标
+      let waypointsXml = '';
+      if (pathConfig.bendPoints && pathConfig.bendPoints.length > 0) {
+        const startPos = getAnchorAbsolutePosition(sourceNode, pathConfig.sourceAnchor, sourceX);
+        const endPos = getAnchorAbsolutePosition(targetNode, pathConfig.targetAnchor, targetX);
+
+        const pointsXml = pathConfig.bendPoints.map(bp => {
+          const absX = startPos.x + (endPos.x - startPos.x) * bp.rx;
+          const absY = startPos.y + (endPos.y - startPos.y) * bp.ry;
+          return `<mxPoint x="${Math.round(absX)}" y="${Math.round(absY)}"/>`;
+        }).join('\n              ');
+
+        waypointsXml = `\n            <Array as="points">\n              ${pointsXml}\n            </Array>`;
+      }
+
+      // 边 - 不在 value 中写标签，标签用独立 mxCell
       cells.push(`
-        <mxCell id="${connId}" style="${style}" edge="1" parent="1" source="${sourceId}" target="${targetId}">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="${connId}" value="" style="${style}" edge="1" parent="1" source="${sourceId}" target="${targetId}">
+          <mxGeometry relative="1" as="geometry">${waypointsXml}
+          </mxGeometry>
         </mxCell>
       `);
+
+      // 间隔标签 - 独立 edgeLabel mxCell（确保飞书画板能正确渲染）
+      if (connLabel) {
+        const labelId = getId();
+        cells.push(`
+        <mxCell id="${labelId}" value="${escapeXml(connLabel)}" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=${labelColor};fontStyle=${labelBold ? 1 : 0};fillColor=none;strokeColor=none;labelBackgroundColor=none;" vertex="1" connectable="0" parent="${connId}">
+          <mxGeometry x="0" y="0" relative="1" as="geometry">
+            <mxPoint y="-12" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+        `);
+      }
     }
   });
 
-  // 添加约束线（虚线，无箭头）
+  // 添加约束线 - 使用锚点 + L形折线路由，橙色虚线无箭头
   constraints.forEach((constraint) => {
     const sourceId = nodeIdMap.get(constraint.sourceNodeId);
     const targetId = nodeIdMap.get(constraint.targetNodeId);
@@ -366,30 +528,77 @@ export function exportToDrawio(
     if (sourceId && targetId) {
       const constraintId = getId();
 
-      // 约束线样式：虚线，橙色，无箭头
-      let style = 'edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;html=1;jettySize=auto;';
-      style += 'strokeColor=#f97316;strokeWidth=2;';  // 橙色
-      style += 'dashed=1;dashPattern=6 4;';           // 虚线
-      style += 'endArrow=none;';                      // 无箭头
-
-      // 方向判断（使用重新计算的坐标）
       const sourceNode = nodes.find(n => n.id === constraint.sourceNodeId);
       const targetNode = nodes.find(n => n.id === constraint.targetNodeId);
-      if (sourceNode && targetNode && startDate) {
-        const sourceX = getNodeExportX(sourceNode);
-        const targetX = getNodeExportX(targetNode);
-        if (targetX > sourceX) {
-          style += 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;';
-        } else {
-          style += 'exitX=0;exitY=0.5;entryX=1;entryY=0.5;';
-        }
+      if (!sourceNode || !targetNode) return;
+
+      // 获取路径配置 — 约束线特殊处理：
+      // 从上方节点底部出发，连到下方节点的顶部（非左边缘）
+      const dy = targetNode.y - sourceNode.y;
+      const dx = targetNode.x - sourceNode.x;
+      const pathConfig = {
+        sourceAnchor: (dy > 0 ? 'bottom' : 'top') as 'top' | 'bottom' | 'left' | 'right',
+        targetAnchor: (dy > 0 ? 'top' : 'bottom') as 'top' | 'bottom' | 'left' | 'right',
+        bendPoints: Math.abs(dx) > 10 ? [{ rx: 0, ry: 1 }] : undefined,
+      };
+
+      // 计算导出 X 坐标
+      const sourceX = startDate ? getNodeExportX(sourceNode) : sourceNode.x;
+      const targetX = startDate ? getNodeExportX(targetNode) : targetNode.x;
+
+      // 约束线样式：虚线橙色，无箭头 + 锚点方向
+      let style = 'edgeStyle=none;html=1;';
+      style += anchorToExitStyle(pathConfig.sourceAnchor, sourceNode.type);
+      style += anchorToEntryStyle(pathConfig.targetAnchor, targetNode.type);
+      style += 'strokeColor=#f97316;strokeWidth=2;dashed=1;dashPattern=6 4;endArrow=none;';
+
+      // 计算 bendPoints 绝对坐标
+      let waypointsXml = '';
+      if (pathConfig.bendPoints && pathConfig.bendPoints.length > 0) {
+        const startPos = getAnchorAbsolutePosition(sourceNode, pathConfig.sourceAnchor, sourceX);
+        const endPos = getAnchorAbsolutePosition(targetNode, pathConfig.targetAnchor, targetX);
+
+        const pointsXml = pathConfig.bendPoints.map(bp => {
+          const absX = startPos.x + (endPos.x - startPos.x) * bp.rx;
+          const absY = startPos.y + (endPos.y - startPos.y) * bp.ry;
+          return `<mxPoint x="${Math.round(absX)}" y="${Math.round(absY)}"/>`;
+        }).join('\n              ');
+
+        waypointsXml = `\n            <Array as="points">\n              ${pointsXml}\n            </Array>`;
       }
 
+      // 约束线间隔文字
+      let constraintLabel = '';
+      if (intervalSettings?.showIntervals) {
+        let value: number;
+        let unitLabel: string;
+        switch (intervalSettings.intervalUnit) {
+          case 'day': value = constraint.offsetMonths * 30; unitLabel = '天'; break;
+          case 'week': value = constraint.offsetMonths * 4.33; unitLabel = '周'; break;
+          default: value = constraint.offsetMonths; unitLabel = '月';
+        }
+        constraintLabel = `${Math.abs(value).toFixed(intervalSettings.intervalDecimals)}${unitLabel}`;
+      }
+
+      // 边 - 不在 value 中写标签
       cells.push(`
-        <mxCell id="${constraintId}" style="${style}" edge="1" parent="1" source="${sourceId}" target="${targetId}">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="${constraintId}" value="" style="${style}" edge="1" parent="1" source="${sourceId}" target="${targetId}">
+          <mxGeometry relative="1" as="geometry">${waypointsXml}
+          </mxGeometry>
         </mxCell>
       `);
+
+      // 约束线间隔标签 - 独立 edgeLabel mxCell
+      if (constraintLabel) {
+        const labelId = getId();
+        cells.push(`
+        <mxCell id="${labelId}" value="${escapeXml(constraintLabel)}" style="edgeLabel;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#f97316;fontStyle=1;fillColor=none;strokeColor=none;labelBackgroundColor=none;" vertex="1" connectable="0" parent="${constraintId}">
+          <mxGeometry x="0" y="0" relative="1" as="geometry">
+            <mxPoint y="-12" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+        `);
+      }
     }
   });
 

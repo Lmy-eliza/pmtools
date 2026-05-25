@@ -102,22 +102,20 @@ export default function HeatMap({
 
   const fontSize = cellSize <= 14 ? '8px' : '10px';
 
-  // Legend 组件：统一使用 DAY_LEGEND_COLORS
-  const Legend = () => {
-    return (
-      <div className="flex items-center justify-end gap-1 mt-3 text-[10px] text-gray-400">
-        <span>少</span>
-        {DAY_LEGEND_COLORS.map((c, i) => (
-          <div
-            key={i}
-            className="rounded-sm"
-            style={{ backgroundColor: c.color, width: 12, height: 12 }}
-          />
-        ))}
-        <span>多</span>
-      </div>
-    );
-  };
+  // Legend 组件：统一使用 DAY_LEGEND_COLORS，内联在标题行右侧
+  const Legend = () => (
+    <div className="flex items-center gap-1 text-[10px] text-gray-400">
+      <span>少</span>
+      {DAY_LEGEND_COLORS.map((c, i) => (
+        <div
+          key={i}
+          className="rounded-sm"
+          style={{ backgroundColor: c.color, width: 10, height: 10 }}
+        />
+      ))}
+      <span>多</span>
+    </div>
+  );
 
   // Month view: calendar-style (rows = week numbers, cols = weekdays)
   if (period === 'month' && monthCalendarData && monthCalendarData.length > 0) {
@@ -130,8 +128,9 @@ export default function HeatMap({
 
     return (
       <div className="bg-white/60 rounded-2xl p-5 shadow-sm border border-white/50">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-          <span>🔥</span> 工作热力图
+        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+          <span className="flex items-center gap-2"><span>🔥</span> 工作热力图</span>
+          <Legend />
         </h3>
         <div ref={containerRef} className="overflow-x-auto">
           <table className="mx-auto" style={{ tableLayout: 'fixed' }}>
@@ -184,8 +183,6 @@ export default function HeatMap({
               ))}
             </tbody>
           </table>
-          {/* #9: Legend */}
-          <Legend />
         </div>
         {/* 自定义 tooltip 浮层 */}
         {tooltip && (
@@ -203,8 +200,9 @@ export default function HeatMap({
   // Transposed layout: rows = columns (day labels), cols = hours
   return (
     <div className="bg-white/60 rounded-2xl p-5 shadow-sm border border-white/50">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-        <span>🔥</span> 工作热力图
+      <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+        <span className="flex items-center gap-2"><span>🔥</span> 工作热力图</span>
+        <Legend />
       </h3>
       <div ref={containerRef} className="overflow-x-auto">
         <table className="mx-auto" style={{ tableLayout: 'fixed' }}>
@@ -253,8 +251,6 @@ export default function HeatMap({
             ))}
           </tbody>
         </table>
-        {/* #9: Legend */}
-        <Legend />
       </div>
       {/* 自定义 tooltip 浮层 */}
       {tooltip && (

@@ -14,6 +14,7 @@ import {
 import type { DailyStats, HeatMapCell, AnalyticsPeriod } from '../../types';
 import { MOOD_OPTIONS } from '../../types';
 import { getDayDualColor, getSlotColor } from './HeatMap';
+import { startOfWeek, format } from 'date-fns';
 
 // 心情数据独立传入（来自 moodLogStore）
 interface MoodDataItem {
@@ -116,7 +117,6 @@ export default function MoodTrendChart({ data, period, hourlyData, startHour = 8
                 dataKey="minutes"
                 name="工时"
                 radius={[4, 4, 0, 0]}
-                barCategoryGap="15%"
               >
                 {chartData.map((entry, idx) => (
                   <Cell key={idx} fill={getSlotColor(entry.minutes)} />
@@ -146,14 +146,43 @@ export default function MoodTrendChart({ data, period, hourlyData, startHour = 8
   }
 
   // 非日视图：工时柱状图 + 心情折线图
-  const chartData = data.map((d) => {
-    const moodItem = moodData?.find(m => m.date === d.date);
-    return {
-      label: d.date.slice(5),
-      hours: +(d.totalMinutes / 60).toFixed(1),
-      mood: moodItem?.avgScore ?? null,
-    };
-  });
+  // 年度视图：按周聚合（365→~52个点），其他视图保持逐天
+  const isYear = period === 'year';
+
+  const chartData = (() => {
+    if (!isYear) {
+      // 非年度视图：逐天数据
+      return data.map((d) => {
+        const moodItem = moodData?.find(m => m.date === d.date);
+        return {
+          label: d.date.slice(5),
+          hours: +(d.totalMinutes / 60).toFixed(1),
+          mood: moodItem?.avgScore ?? null,
+        };
+      });
+    }
+
+    // 年度视图：按周聚合
+    const weekMap = new Map<string, { totalMinutes: number; moodScores: number[]; count: number }>();
+    for (const d of data) {
+      const weekStart = startOfWeek(new Date(d.date), { weekStartsOn: 1 }); // 周一起始
+      const weekKey = format(weekStart, 'MM-dd');
+      const entry = weekMap.get(weekKey) || { totalMinutes: 0, moodScores: [], count: 0 };
+      entry.totalMinutes += d.totalMinutes;
+      entry.count++;
+      const moodItem = moodData?.find(m => m.date === d.date);
+      if (moodItem?.avgScore != null) entry.moodScores.push(moodItem.avgScore);
+      weekMap.set(weekKey, entry);
+    }
+
+    return Array.from(weekMap.entries()).map(([label, entry]) => ({
+      label,
+      hours: +(entry.totalMinutes / 60).toFixed(1),
+      mood: entry.moodScores.length > 0
+        ? +(entry.moodScores.reduce((a, b) => a + b, 0) / entry.moodScores.length).toFixed(1)
+        : null,
+    }));
+  })();
 
   return (
     <div className="bg-white/60 rounded-2xl p-5 shadow-sm border border-white/50 h-full flex flex-col">
@@ -204,7 +233,6 @@ export default function MoodTrendChart({ data, period, hourlyData, startHour = 8
               dataKey="hours"
               name="工时"
               radius={[4, 4, 0, 0]}
-              barCategoryGap="20%"
             >
               {chartData.map((entry, idx) => (
                 <Cell key={idx} fill={getDayDualColor(entry.hours * 60)} />
@@ -217,7 +245,7 @@ export default function MoodTrendChart({ data, period, hourlyData, startHour = 8
               type="natural"
               stroke="#F59E0B"
               strokeWidth={2.5}
-              dot={{ fill: '#F59E0B', r: 4 }}
+              dot={isYear ? false : { fill: '#F59E0B', r: 4 }}
               activeDot={{ r: 6 }}
               connectNulls
             />

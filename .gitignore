@@ -1,2 +1,6 @@
 .claude/
 nul
+tmp/
+.netlify/
+.D
+*.zip

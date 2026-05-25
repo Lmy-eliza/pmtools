@@ -109,7 +109,7 @@ export default function ExecutionPage() {
       : pomodoroTotalSeconds - pomodoroRemainingSeconds;
     const now = new Date(focusStartedAt.getTime() + elapsedSec * 1000);
     const endTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const isPaused = pomodoroPhase !== 'idle' && !pomodoroIntervalId && !(pomodoroRemainingSeconds === 0 && !isOvertime);
+    const isPaused = !pomodoroIntervalId && !(pomodoroRemainingSeconds === 0 && !isOvertime);
     return {
       todo_title: todo?.title || '番茄计时',
       color: todo?.color || '#EF4444',

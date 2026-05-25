@@ -1,5 +1,5 @@
 // 节点类型枚举
-export type NodeType = 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji';
+export type NodeType = 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'pentagon';
 
 // 基础节点接口
 export interface PlanNode {
@@ -63,6 +63,7 @@ export interface Swimlane {
 export interface ProjectData {
   id: string;
   name: string;
+  schemaVersion?: string;
   startDate: Date;
   endDate: Date;
   swimlanes: Swimlane[];
@@ -92,7 +93,7 @@ export interface CanvasSettings {
 }
 
 // 工具类型
-export type ToolType = 'select' | 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'connection';
+export type ToolType = 'select' | 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'pentagon' | 'connection';
 
 // 版本数据结构
 export interface ProjectVersion {

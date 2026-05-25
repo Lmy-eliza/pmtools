@@ -25,6 +25,18 @@ export const nodePresets: NodePreset[] = [
   { name: '决策点', type: 'triangle', color: '#AF52DE', category: '决策' },
   { name: '里程碑', type: 'diamond', color: '#5856D6', category: '通用' },
 
+  // 阀门 (Gates)
+  { name: 'G0', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G1', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G2', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G3', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G4', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G5', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G6', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G7', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G8', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+  { name: 'G9', type: 'pentagon', color: '#64D2FF', category: '阀门' },
+
   // 活动
   { name: '开发活动', type: 'rectangle', color: '#32ADE6', category: '活动' },
   { name: '测试活动', type: 'rectangle', color: '#FF9F0A', category: '活动' },
@@ -40,6 +52,7 @@ export const defaultColors: Record<string, string> = {
   circle: '#34C759',
   hexagon: '#5856D6',
   emoji: '#FF9500',
+  pentagon: '#64D2FF',
 };
 
 // 颜色预设

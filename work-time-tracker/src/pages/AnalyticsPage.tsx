@@ -25,7 +25,6 @@ import type {
   HeatMapColumn,
   TimeBlock,
   DailyNote,
-  PeriodBarData,
   Todo,
   YearHeatMapCell,
   MonthCalendarCell,
@@ -38,7 +37,6 @@ import { useTagStore } from '../stores/tagStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { feishuApi } from '../services/feishuApi';
 import PeriodSelector from '../components/analytics/PeriodSelector';
-import PeriodBarChart from '../components/analytics/PeriodBarChart';
 import HeatMap from '../components/analytics/HeatMap';
 import HeatMapYear from '../components/analytics/HeatMapYear';
 import TagPieChart from '../components/analytics/TagPieChart';
@@ -237,75 +235,6 @@ export default function AnalyticsPage() {
       percentage: total > 0 ? (v.minutes / total) * 100 : 0,
     })).sort((a, b) => b.totalMinutes - a.totalMinutes);
   }, [blocks, tags]);
-
-  // Bar chart data
-  const { barChartData, barChartTitle } = useMemo((): { barChartData: PeriodBarData[]; barChartTitle: string } => {
-    switch (period) {
-      case 'day':
-        return { barChartData: [], barChartTitle: '' };
-
-      case 'week':
-        return {
-          barChartTitle: '每日工时',
-          barChartData: dailyStats.map((d) => ({
-            label: d.date.slice(5),
-            hours: +(d.totalMinutes / 60).toFixed(1),
-          })),
-        };
-
-      case 'month': {
-        const weekMap = new Map<string, number>();
-        for (const d of dailyStats) {
-          const weekStart = startOfWeek(parseISO(d.date), { weekStartsOn: 1 });
-          const weekKey = formatDate(weekStart);
-          weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + d.totalMinutes);
-        }
-        const sorted = Array.from(weekMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-        return {
-          barChartTitle: '每周工时',
-          barChartData: sorted.map(([weekStart, mins]) => {
-            const ws = parseISO(weekStart);
-            const wn = getWeekNumber(ws);
-            return { label: `W${wn}`, hours: +(mins / 60).toFixed(1) };
-          }),
-        };
-      }
-
-      case 'quarter': {
-        const monthMap = new Map<number, number>();
-        for (const d of dailyStats) {
-          const m = getMonth(parseISO(d.date));
-          monthMap.set(m, (monthMap.get(m) || 0) + d.totalMinutes);
-        }
-        const sorted = Array.from(monthMap.entries()).sort((a, b) => a[0] - b[0]);
-        return {
-          barChartTitle: '每月工时',
-          barChartData: sorted.map(([m, mins]) => ({
-            label: MONTH_LABELS[m],
-            hours: +(mins / 60).toFixed(1),
-          })),
-        };
-      }
-
-      case 'year': {
-        const monthMap = new Map<number, number>();
-        for (let i = 0; i < 12; i++) monthMap.set(i, 0);
-        for (const d of dailyStats) {
-          const m = getMonth(parseISO(d.date));
-          monthMap.set(m, (monthMap.get(m) || 0) + d.totalMinutes);
-        }
-        return {
-          barChartTitle: '每月工时',
-          barChartData: Array.from(monthMap.entries())
-            .sort((a, b) => a[0] - b[0])
-            .map(([m, mins]) => ({
-              label: MONTH_LABELS[m],
-              hours: +(mins / 60).toFixed(1),
-            })),
-        };
-      }
-    }
-  }, [period, dailyStats]);
 
   // HeatMap columns based on period
   const heatMapColumns: HeatMapColumn[] = useMemo(() => {
@@ -510,19 +439,16 @@ export default function AnalyticsPage() {
     }
   };
 
-  // 悬浮导航项：日视图5项，其余6项
+  // 悬浮导航项：与实际图表一一绑定
   const navItems = useMemo(() => {
-    const items = [];
-    items.push({ id: 'section-heatmap', emoji: '🔥', label: '热力图' });
-    if (period !== 'day') {
-      items.push({ id: 'section-barchart', emoji: '📊', label: '工时' });
-    }
-    items.push({ id: 'section-summary', emoji: '📋', label: '汇总' });
-    items.push({ id: 'section-tags', emoji: '🏷️', label: '标签' });
-    items.push({ id: 'section-mood', emoji: '😊', label: '心情' });
-    items.push({ id: 'section-notes', emoji: '📖', label: '随笔' });
-    return items;
-  }, [period]);
+    return [
+      { id: 'section-heatmap', emoji: '🔥', label: '热力图' },
+      { id: 'section-summary', emoji: '📋', label: '汇总' },
+      { id: 'section-tags', emoji: '🏷️', label: '标签' },
+      { id: 'section-mood', emoji: '😊', label: '心情' },
+      { id: 'section-notes', emoji: '📖', label: '随笔' },
+    ];
+  }, []);
 
   if (!isConfigured) {
     return (
@@ -578,52 +504,23 @@ export default function AnalyticsPage() {
           </div>
         ) : (
           <>
-            {/* === Row1: 热力图（+ 柱状图）=== */}
-            {/* 日视图：热力图独占整行 */}
-            {period === 'day' && (
-              <div id="section-heatmap">
+            {/* === Row1: 热力图（所有视图独占整行）=== */}
+            <div id="section-heatmap">
+              {period === 'year' ? (
+                <HeatMapYear data={yearHeatMapData} />
+              ) : (
                 <HeatMap
                   data={heatMapData}
                   period={period}
                   columns={heatMapColumns}
                   startHour={dynamicStartHour}
                   endHour={dynamicEndHour}
+                  monthCalendarData={period === 'month' ? monthCalendarData : undefined}
                 />
-              </div>
-            )}
-            {/* 年视图：年度热力图独占整行 */}
-            {period === 'year' && (
-              <div id="section-heatmap">
-                <HeatMapYear data={yearHeatMapData} />
-              </div>
-            )}
-            {/* 周/月/季视图：热力图（左）+ 柱状图（右）并排 1:1 */}
-            {period !== 'day' && period !== 'year' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div id="section-heatmap">
-                  <HeatMap
-                    data={heatMapData}
-                    period={period}
-                    columns={heatMapColumns}
-                    startHour={dynamicStartHour}
-                    endHour={dynamicEndHour}
-                    monthCalendarData={period === 'month' ? monthCalendarData : undefined}
-                  />
-                </div>
-                <div id="section-barchart">
-                  <PeriodBarChart data={barChartData} title={barChartTitle} />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* === Row2（仅年视图）: 柱状图独占整行 === */}
-            {period === 'year' && (
-              <div id="section-barchart">
-                <PeriodBarChart data={barChartData} title={barChartTitle} />
-              </div>
-            )}
-
-            {/* === 汇总(左) + 饼图(右) === */}
+            {/* === Row2: 汇总(左) + 标签工时(右) === */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
               <div id="section-summary">
                 <SummaryCard
@@ -646,7 +543,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* === 心情（独占整行）=== */}
+            {/* === Row3: 心情×工时（独占整行）=== */}
             <div id="section-mood">
               <MoodTrendChart
                 data={dailyStats}
@@ -658,7 +555,7 @@ export default function AnalyticsPage() {
               />
             </div>
 
-            {/* === 随笔（独占整行 + 日期筛选）=== */}
+            {/* === Row4: 随笔（独占整行）=== */}
             <div id="section-notes">
               <NoteHistorySection
                 notes={notes}

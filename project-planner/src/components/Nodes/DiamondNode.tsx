@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Group, Line, Text } from 'react-konva';
+import { Group, Line, Text, Rect } from 'react-konva';
 import { formatShortDate } from '../../utils/dateUtils';
 import type { PlanNode } from '../../types';
 
@@ -70,6 +70,15 @@ export const DiamondNode: React.FC<DiamondNodeProps> = ({
       }}
       style={{ cursor: 'pointer' }}
     >
+      {/* 日期白底 */}
+      <Rect
+        x={-32}
+        y={-diamondHeight - 18 - 2}
+        width={64}
+        height={14}
+        fill="rgba(255,255,255,0.85)"
+        cornerRadius={3}
+      />
       {/* 日期显示在节点上方 */}
       <Text
         text={formatShortDate(node.date)}
@@ -103,6 +112,15 @@ export const DiamondNode: React.FC<DiamondNodeProps> = ({
         shadowOffset={{ x: 0, y: 2 }}
       />
 
+      {/* 名称白底 */}
+      <Rect
+        x={-42}
+        y={diamondHeight + 8 - 1}
+        width={84}
+        height={16}
+        fill="rgba(255,255,255,0.85)"
+        cornerRadius={3}
+      />
       {/* 节点名称 */}
       <Text
         text={node.name}

@@ -72,10 +72,17 @@ export default function SettingsPage() {
   // Wiki URL 换取 App Token 状态
   const [wikiConverting, setWikiConverting] = useState(false);
   const [wikiConvertMsg, setWikiConvertMsg] = useState('');
+  // 高级凭据折叠状态（已填 appId 时默认展开）
+  const [showCredentials, setShowCredentials] = useState(false);
 
   useEffect(() => {
     loadFromStorage();
   }, []);
+
+  // 已填 appId 时默认展开凭据区域
+  useEffect(() => {
+    if (feishu.appId) setShowCredentials(true);
+  }, [feishu.appId]);
 
   useEffect(() => {
     if (feishu.tagTableId) {
@@ -396,45 +403,70 @@ export default function SettingsPage() {
               </h2>
 
               <div className="grid grid-cols-1 gap-3">
-                {[
-                  { key: 'appId' as const, label: 'App ID', placeholder: 'cli_xxxxx', hint: '飞书开放平台 → 应用凭证（Netlify 部署可留空）' },
-                  { key: 'appSecret' as const, label: 'App Secret', placeholder: '密钥...', hint: '与 App ID 在同一页面获取（Netlify 部署可留空）' },
-                  { key: 'appToken' as const, label: 'App Token (多维表格)', placeholder: 'bascxxxxx 或粘贴完整 URL', hint: '支持粘贴 /base/ 或 /wiki/ 格式 URL，自动提取 App Token' },
-                ].map(({ key, label, placeholder, hint }) => (
-                  <div key={key}>
-                    <label className="text-xs text-gray-500 block mb-1">
-                      {label}
-                    </label>
-                    <input
-                      type={key === 'appSecret' ? 'password' : 'text'}
-                      value={
-                        key === 'appSecret'
-                          ? feishu[key]
-                          : focusedField === key
-                            ? feishu[key]
-                            : maskValue(feishu[key])
-                      }
-                      onChange={(e) => {
-                        if (key === 'appToken') {
-                          handleAppTokenChange(e.target.value);
-                        } else {
-                          setFeishu({ [key]: e.target.value });
-                        }
-                      }}
-                      onFocus={() => setFocusedField(key)}
-                      onBlur={() => setFocusedField(null)}
-                      placeholder={placeholder}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    />
-                    <div className="text-[10px] text-gray-400 mt-0.5">{hint}</div>
-                    {key === 'appToken' && wikiConverting && (
-                      <div className="text-[10px] text-blue-500 mt-0.5 animate-pulse">⏳ {wikiConvertMsg || '正在获取...'}</div>
-                    )}
-                    {key === 'appToken' && !wikiConverting && wikiConvertMsg && (
-                      <div className={`text-[10px] mt-0.5 ${wikiConvertMsg.startsWith('✅') ? 'text-green-500' : 'text-amber-500'}`}>{wikiConvertMsg}</div>
-                    )}
-                  </div>
-                ))}
+                {/* App Token 始终显示 */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">App Token (多维表格)</label>
+                  <input
+                    type="text"
+                    value={focusedField === 'appToken' ? feishu.appToken : maskValue(feishu.appToken)}
+                    onChange={(e) => handleAppTokenChange(e.target.value)}
+                    onFocus={() => setFocusedField('appToken')}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="bascxxxxx 或粘贴完整 URL"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                  <div className="text-[10px] text-gray-400 mt-0.5">支持粘贴 /base/ 或 /wiki/ 格式 URL，自动提取 App Token</div>
+                  {wikiConverting && (
+                    <div className="text-[10px] text-blue-500 mt-0.5 animate-pulse">⏳ {wikiConvertMsg || '正在获取...'}</div>
+                  )}
+                  {!wikiConverting && wikiConvertMsg && (
+                    <div className={`text-[10px] mt-0.5 ${wikiConvertMsg.startsWith('✅') ? 'text-green-500' : 'text-amber-500'}`}>{wikiConvertMsg}</div>
+                  )}
+                </div>
+
+                {/* App ID / App Secret 折叠区域 */}
+                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowCredentials(!showCredentials)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-500 hover:bg-gray-50/50 transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {!feishu.appId ? (
+                        <>✅ 应用凭据已通过服务端配置</>
+                      ) : (
+                        <>🔑 已配置自定义应用凭据</>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-500">
+                      {showCredentials ? '收起' : '自定义配置'}
+                      {showCredentials ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </span>
+                  </button>
+                  {showCredentials && (
+                    <div className="px-3 pb-3 space-y-2 border-t border-gray-100 pt-2">
+                      {[
+                        { key: 'appId' as const, label: 'App ID', placeholder: 'cli_xxxxx', hint: '飞书开放平台 → 应用凭证' },
+                        { key: 'appSecret' as const, label: 'App Secret', placeholder: '密钥...', hint: '与 App ID 在同一页面获取' },
+                      ].map(({ key, label, placeholder, hint }) => (
+                        <div key={key}>
+                          <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                          <input
+                            type={key === 'appSecret' ? 'password' : 'text'}
+                            value={key === 'appSecret' ? feishu[key] : focusedField === key ? feishu[key] : maskValue(feishu[key])}
+                            onChange={(e) => setFeishu({ [key]: e.target.value })}
+                            onFocus={() => setFocusedField(key)}
+                            onBlur={() => setFocusedField(null)}
+                            placeholder={placeholder}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          />
+                          <div className="text-[10px] text-gray-400 mt-0.5">{hint}</div>
+                        </div>
+                      ))}
+                      <div className="text-[10px] text-amber-500 mt-1">留空则使用服务端环境变量（推荐）</div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-3">

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useCanvasStore } from './stores/canvasStore';
+import { useAuthStore } from './stores/authStore';
 import { MainToolbar } from './components/Toolbar/MainToolbar';
 import { PlannerCanvas } from './components/Canvas/PlannerCanvas';
 import type { PlannerCanvasRef } from './components/Canvas/PlannerCanvas';
@@ -11,7 +12,10 @@ import { ConstraintPanel } from './components/Panels/ConstraintPanel';
 import { ConnectionPanel } from './components/Panels/ConnectionPanel';
 import { VersionHistoryPanel } from './components/Panels/VersionHistoryPanel';
 import { exportToDrawio, downloadFile } from './utils/exportUtils';
-import { importFromJSON, saveProject, saveVersion, listVersions, deleteVersion, exportToJSON } from './utils/storage';
+import { importFromJSON, validateProjectJSON, saveProject, saveVersion, listVersions, deleteVersion, exportToJSON } from './utils/storage';
+import { createProject as createCloudProject, updateProject as updateCloudProject } from './utils/feishuApi';
+import { getCurrentUser } from './utils/feishuAuth';
+import { useCloudSync } from './hooks/useCloudSync';
 import { v4 as uuidv4 } from 'uuid';
 import type { ProjectData, ProjectVersion } from './types';
 
@@ -26,9 +30,49 @@ function App() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [isNewProjectSettings, setIsNewProjectSettings] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>();
+  const [currentRecordId, setCurrentRecordId] = useState<string | undefined>();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 飞书认证状态
+  const { initialize: initAuth, handleCallback: handleAuthCallback } = useAuthStore();
+
+  // 初始化飞书认证 + 处理 OAuth 回调
+  useEffect(() => {
+    // 检查是否是 OAuth 回调页面
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('code') && window.location.pathname === '/auth/callback') {
+      handleAuthCallback().then((success) => {
+        // 回调处理完毕，清理 URL（去掉 code 和 state 参数）
+        window.history.replaceState({}, '', '/');
+        if (!success) {
+          setToast({ message: '飞书登录失败，请重试', type: 'error' });
+          setTimeout(() => setToast(null), 3000);
+        } else {
+          setToast({ message: '飞书登录成功', type: 'success' });
+          setTimeout(() => setToast(null), 2000);
+        }
+      });
+    } else {
+      // 非回调页面，初始化认证状态（从 localStorage 恢复）
+      initAuth();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 云端同步（轮询 + 冲突检测）
+  const { isAuthenticated: isSyncEnabled } = useAuthStore();
+  const {
+    hasConflict,
+    conflictMessage,
+    loadLatestVersion,
+    dismissConflict,
+    markSynced,
+  } = useCloudSync({
+    recordId: currentRecordId,
+    enabled: isSyncEnabled && !!currentRecordId,
+    pollingInterval: 10000,
+  });
 
   // 约束画布选择模式状态
   const [isConstraintSelectMode, setIsConstraintSelectMode] = useState(false);
@@ -60,9 +104,11 @@ function App() {
     setTimeout(() => setToast(null), 2000);
   };
 
-  // 自动保存函数（问题12）
+  // 自动保存函数（本地 + 云端）
   const performAutoSave = useCallback(async () => {
     const state = useCanvasStore.getState();
+    const { isAuthenticated } = useAuthStore.getState();
+
     // 只有当有内容时才自动保存
     if (state.nodes.length === 0 && state.swimlanes.every(s =>
       s.name === '软件开发' || s.name === '硬件开发' || s.name === '测试验证'
@@ -86,26 +132,52 @@ function App() {
 
     try {
       setAutoSaveStatus('saving');
+
+      // 始终保存到本地
       await saveProject(projectData);
       if (!currentProjectId) {
         setCurrentProjectId(id);
       }
+
+      // 如果已登录飞书，同时保存到云端
+      if (isAuthenticated) {
+        const user = getCurrentUser();
+        if (user) {
+          try {
+            if (currentRecordId) {
+              // 已有云端记录，更新
+              await updateCloudProject(currentRecordId, projectData, user.openId);
+            } else {
+              // 没有云端记录，创建新的
+              const recordId = await createCloudProject(projectData, user.openId, user.name);
+              setCurrentRecordId(recordId);
+            }
+            markSynced(); // 通知同步 hook：本地刚保存过，不要误判为冲突
+          } catch (cloudError) {
+            // 云端保存失败不影响本地保存
+            console.warn('云端保存失败（本地已保存）:', cloudError);
+          }
+        }
+      }
+
       setAutoSaveStatus('saved');
       console.log('自动保存成功');
     } catch (error) {
       console.error('自动保存失败:', error);
       setAutoSaveStatus('idle');
     }
-  }, [currentProjectId]);
+  }, [currentProjectId, currentRecordId]);
 
-  // 防抖自动保存
+  // 防抖自动保存（登录态下 3 秒，离线 2 秒）
   const triggerAutoSave = useCallback(() => {
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
+    const { isAuthenticated } = useAuthStore.getState();
+    const delay = isAuthenticated ? 3000 : 2000;
     autoSaveTimeoutRef.current = setTimeout(() => {
       performAutoSave();
-    }, 2000); // 2秒后自动保存
+    }, delay);
   }, [performAutoSave]);
 
   // 监听状态变化，触发自动保存
@@ -124,6 +196,11 @@ function App() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [performAutoSave]);
+
+  // 需求6：粘贴 JSON 导入弹窗状态
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [pasteJsonText, setPasteJsonText] = useState('');
+  const [pasteJsonError, setPasteJsonError] = useState('');
 
   // 快捷键处理
   useEffect(() => {
@@ -185,6 +262,9 @@ function App() {
         case 't':
           setCurrentTool('triangle');
           break;
+        case 'g':
+          setCurrentTool('pentagon');
+          break;
         case 'r':
           setCurrentTool('rectangle');
           break;
@@ -236,9 +316,10 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedNodeIds, deleteNode, clearSelection, setCurrentTool, undo, redo, showHelp, showProjectList, showProjectSettings, isNewProjectSettings, showConstraintPanel, showVersionHistory, isConstraintSelectMode, selectedConnectionIds, deleteSelectedConnections]);
 
-  // 保存项目到本地数据库
+  // 保存项目到本地数据库（+ 云端）
   const handleSaveProject = async () => {
     const id = currentProjectId || uuidv4();
+    const { isAuthenticated } = useAuthStore.getState();
     const projectData: ProjectData = {
       id,
       name: projectName,
@@ -255,7 +336,26 @@ function App() {
     try {
       await saveProject(projectData);
       setCurrentProjectId(id);
-      showToastMessage('项目已保存', 'success');
+
+      // 登录态下同步到云端
+      if (isAuthenticated) {
+        const user = getCurrentUser();
+        if (user) {
+          try {
+            if (currentRecordId) {
+              await updateCloudProject(currentRecordId, projectData, user.openId);
+            } else {
+              const recordId = await createCloudProject(projectData, user.openId, user.name);
+              setCurrentRecordId(recordId);
+            }
+            showToastMessage('项目已保存（本地+云端）', 'success');
+          } catch {
+            showToastMessage('本地已保存，云端同步失败', 'error');
+          }
+        }
+      } else {
+        showToastMessage('项目已保存', 'success');
+      }
     } catch (error) {
       console.error('保存失败:', error);
       showToastMessage('保存失败', 'error');
@@ -275,7 +375,7 @@ function App() {
   };
 
   // 加载项目
-  const handleSelectProject = (project: ProjectData) => {
+  const handleSelectProject = (project: ProjectData, recordId?: string) => {
     useCanvasStore.setState({
       projectName: project.name,
       startDate: project.startDate,
@@ -289,6 +389,7 @@ function App() {
       historyIndex: -1,
     });
     setCurrentProjectId(project.id);
+    setCurrentRecordId(recordId);
   };
 
   // 导出DrawIO - 问题15修复：确保使用最新的store状态
@@ -298,13 +399,18 @@ function App() {
       state.projectName,
       state.nodes,
       state.connections,
-      state.constraints,  // 新增约束线导出
+      state.constraints,
       state.swimlanes,
       state.settings.monthWidth,
       state.settings.swimlaneHeight,
       state.startDate,
       state.endDate,
-      state.settings.timelineView || 'month'
+      state.settings.timelineView || 'month',
+      {
+        showIntervals: state.settings.showIntervals,
+        intervalUnit: state.settings.intervalUnit,
+        intervalDecimals: state.settings.intervalDecimals,
+      }
     );
     downloadFile(xml, `${state.projectName}.drawio`, 'application/xml');
   };
@@ -357,7 +463,7 @@ function App() {
       showToastMessage('导入成功', 'success');
     } catch (error) {
       console.error('导入失败:', error);
-      showToastMessage('导入失败', 'error');
+      showToastMessage(error instanceof Error ? error.message : '导入失败，请检查 JSON 格式', 'error');
     }
 
     // 清除文件选择
@@ -668,6 +774,48 @@ function App() {
     setShowConstraintInputDialog(false);
   };
 
+  // 需求6：粘贴 JSON 导入处理
+  const handleOpenPasteDialog = () => {
+    setPasteJsonText('');
+    setPasteJsonError('');
+    setShowPasteDialog(true);
+  };
+
+  const handlePasteImport = () => {
+    if (!pasteJsonText.trim()) {
+      setPasteJsonError('请粘贴 JSON 内容');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(pasteJsonText);
+      const validation = validateProjectJSON(parsed);
+      if (!validation.valid) {
+        setPasteJsonError(validation.errors.join('\n'));
+        return;
+      }
+      const data = importFromJSON(pasteJsonText);
+      const newId = uuidv4();
+      useCanvasStore.setState({
+        projectName: data.name || '导入的项目',
+        startDate: data.startDate,
+        endDate: data.endDate,
+        swimlanes: data.swimlanes,
+        nodes: data.nodes,
+        connections: data.connections || [],
+        constraints: data.constraints || [],
+        selectedNodeIds: [],
+        history: [],
+        historyIndex: -1,
+      });
+      setCurrentProjectId(newId);
+      setShowPasteDialog(false);
+      setPasteJsonText('');
+      showToastMessage('项目导入成功', 'success');
+    } catch (err) {
+      setPasteJsonError(err instanceof Error ? err.message : 'JSON 解析失败，请检查格式');
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* 工具栏 */}
@@ -683,6 +831,7 @@ function App() {
         onOpenConstraintPanel={() => setShowConstraintPanel(!showConstraintPanel)}
         onOpenVersionHistory={() => setShowVersionHistory(!showVersionHistory)}
         onOpenConnectionPanel={() => setShowConnectionPanel(!showConnectionPanel)}
+        onPasteJSON={handleOpenPasteDialog}
         showConstraintPanel={showConstraintPanel}
         showVersionHistory={showVersionHistory}
         showConnectionPanel={showConnectionPanel}
@@ -726,7 +875,7 @@ function App() {
       {/* 状态栏 */}
       <div className="h-6 bg-white border-t border-gray-200 flex items-center px-4 text-xs text-gray-500">
         <span className="mr-4">
-          工具: {currentTool === 'select' ? '选择' : currentTool === 'diamond' ? '菱形' : currentTool === 'triangle' ? '三角形' : currentTool === 'rectangle' ? '长方形' : '连线'}
+          工具: {currentTool === 'select' ? '选择' : currentTool === 'diamond' ? '菱形' : currentTool === 'triangle' ? '三角形' : currentTool === 'rectangle' ? '长方形' : currentTool === 'pentagon' ? '阀门' : currentTool === 'connection' ? '连线' : currentTool}
         </span>
         <span className="mr-4">节点: {nodes.length}</span>
         <span className="mr-4">连接: {connections.length}</span>
@@ -735,6 +884,12 @@ function App() {
         <span className={`mr-4 ${autoSaveStatus === 'saving' ? 'text-blue-500' : autoSaveStatus === 'saved' ? 'text-green-500' : ''}`}>
           {autoSaveStatus === 'saving' ? '保存中...' : autoSaveStatus === 'saved' ? '已保存' : ''}
         </span>
+        {/* 云端同步标记 */}
+        {currentRecordId && (
+          <span className="mr-4 text-blue-400 flex items-center gap-1">
+            ☁️ 云端同步
+          </span>
+        )}
         <div className="flex-1" />
         <span className="text-gray-400">按 ? 或 F1 查看帮助</span>
       </div>
@@ -778,6 +933,40 @@ function App() {
         loadVersions={listVersions}
         deleteVersion={deleteVersion}
       />
+
+      {/* 云端同步冲突提示 */}
+      {hasConflict && conflictMessage && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-white border border-orange-300 rounded-lg shadow-xl z-50 p-4 max-w-md">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-800 mb-1">项目已被更新</h4>
+              <p className="text-sm text-gray-600 mb-3">{conflictMessage}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const success = await loadLatestVersion();
+                    if (success) {
+                      showToastMessage('已加载最新版本', 'success');
+                    } else {
+                      showToastMessage('加载失败', 'error');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  加载最新版本
+                </button>
+                <button
+                  onClick={dismissConflict}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  保持我的版本
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 约束画布选择模式提示 */}
       {isConstraintSelectMode && (
@@ -846,6 +1035,50 @@ function App() {
               </button>
               <button onClick={handleConfirmConstraint} className="btn btn-primary">
                 确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 需求6：粘贴 JSON 导入弹窗 */}
+      {showPasteDialog && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowPasteDialog(false)}>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-[480px]" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2">粘贴 JSON 导入项目</h3>
+            <p className="text-sm text-gray-500 mb-4">将项目的 JSON 数据粘贴到下方，点击「新建项目」即可导入。</p>
+            <textarea
+              className="w-full h-48 border border-gray-300 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder='粘贴 JSON 内容...'
+              value={pasteJsonText}
+              onChange={(e) => {
+                setPasteJsonText(e.target.value);
+                setPasteJsonError('');
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+              onKeyUp={(e) => e.stopPropagation()}
+              autoFocus
+            />
+            {pasteJsonError && (
+              <p className="text-sm text-red-500 mt-2">{pasteJsonError}</p>
+            )}
+            <div className="flex gap-2 justify-end mt-4">
+              <button
+                onClick={() => {
+                  setShowPasteDialog(false);
+                  setPasteJsonText('');
+                  setPasteJsonError('');
+                }}
+                className="btn"
+              >
+                取消
+              </button>
+              <button
+                onClick={handlePasteImport}
+                className="btn btn-primary"
+                disabled={!pasteJsonText.trim()}
+              >
+                新建项目
               </button>
             </div>
           </div>

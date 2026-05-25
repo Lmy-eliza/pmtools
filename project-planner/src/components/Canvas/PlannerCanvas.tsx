@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Rect, Line, Text, Group } from 'react-konva';
 import { useCanvasStore } from '../../stores/canvasStore';
-import { xToDate, formatDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
+import { xToDate, formatDate, formatShortDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
 import { DiamondNode } from '../Nodes/DiamondNode';
 import { TriangleNode } from '../Nodes/TriangleNode';
 import { RectangleNode } from '../Nodes/RectangleNode';
@@ -9,6 +9,7 @@ import { StarNode } from '../Nodes/StarNode';
 import { CircleNode } from '../Nodes/CircleNode';
 import { HexagonNode } from '../Nodes/HexagonNode';
 import { EmojiNode } from '../Nodes/EmojiNode';
+import { PentagonNode } from '../Nodes/PentagonNode';
 import { ConnectionLine } from '../Nodes/ConnectionLine';
 import { defaultColors } from '../../data/presets';
 import { GripVertical, Trash2 } from 'lucide-react';
@@ -48,6 +49,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
   const [isBoxSelecting, setIsBoxSelecting] = useState(false);
   const [boxSelectStart, setBoxSelectStart] = useState<{ x: number; y: number } | null>(null);
   const [boxSelectEnd, setBoxSelectEnd] = useState<{ x: number; y: number } | null>(null);
+  // 需求3C：悬停信息卡
+  const [hoverTooltip, setHoverTooltip] = useState<{ x: number; y: number; node: PlanNode } | null>(null);
 
   const {
     projectName,
@@ -142,91 +145,79 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
 
   // 处理画布点击
   const handleStageClick = (e: any) => {
-    // 获取点击位置
     const stage = e.target.getStage();
-    const pos = stage.getPointerPosition();
+    const rawPos = stage.getPointerPosition();
 
-    if (!pos) return;
+    if (!rawPos) return;
+
+    // 将屏幕坐标转换为画布逻辑坐标（与 onMouseDown/onMouseMove 一致）
+    const pos = { x: rawPos.x / settings.zoom, y: rawPos.y / settings.zoom };
 
     // 检查是否点击在节点上（节点有自己的点击处理）
     const clickedOnNode = e.target.getParent()?.className === 'Group' &&
                           e.target.getParent()?.attrs?.draggable === true;
 
-    if (clickedOnNode) {
-      // 点击在节点上，不处理（节点有自己的onClick）
-      return;
-    }
+    if (clickedOnNode) return;
 
-    // 问题14修复：检查是否点击在任何节点区域内（即使没有触发节点的 onClick）
+    // 碰撞检测：用 dateToX 计算节点的实际渲染位置，而非 stale 的 node.x
     const clickedInsideNode = nodes.some(node => {
+      const calcX = node.type === 'rectangle'
+        ? dateToX(node.date, startDate, unitWidth, 0, timelineView) + (node.width || 100) / 2
+        : dateToX(node.date, startDate, unitWidth, 0, timelineView);
       const nodeWidth = node.width || (node.type === 'rectangle' ? 100 : 40);
       const nodeHeight = node.type === 'rectangle' ? 32 : 40;
-      return pos.x >= node.x - nodeWidth / 2 &&
-             pos.x <= node.x + nodeWidth / 2 &&
+      return pos.x >= calcX - nodeWidth / 2 &&
+             pos.x <= calcX + nodeWidth / 2 &&
              pos.y >= node.y - nodeHeight / 2 &&
              pos.y <= node.y + nodeHeight / 2;
     });
 
-    if (clickedInsideNode) {
-      // 点击在已有节点区域内，不创建新节点
-      return;
-    }
+    if (clickedInsideNode) return;
 
     if (currentTool === 'select') {
       clearSelection();
       setConnectionStart(null);
-    } else if (['diamond', 'triangle', 'rectangle', 'star', 'circle', 'hexagon', 'emoji'].includes(currentTool)) {
-      // 添加新节点 - 检查点击位置是否在泳道区域内（Stage内部x从0开始）
+    } else if (['diamond', 'triangle', 'rectangle', 'star', 'circle', 'hexagon', 'emoji', 'pentagon'].includes(currentTool)) {
       if (pos.x > 0 && pos.y > HEADER_HEIGHT) {
-        // 防止误添加：检查是否点击在已选中节点附近
+        // 创建模式下先清除选中，避免"近选中节点保护区"阻止后续连续创建
         if (selectedNodeIds.length > 0) {
-          const clickedNearSelected = selectedNodeIds.some(id => {
-            const selectedNode = nodes.find(n => n.id === id);
-            if (!selectedNode) return false;
-            const nodeWidth = selectedNode.width || 60;
-            return Math.abs(pos.x - selectedNode.x) < nodeWidth / 2 + 30
-                && Math.abs(pos.y - selectedNode.y) < 40;
-          });
-          if (clickedNearSelected) return;
+          clearSelection();
         }
 
         const swimlaneIndex = Math.floor((pos.y - HEADER_HEIGHT) / settings.swimlaneHeight);
         const swimlane = swimlanes[swimlaneIndex];
 
         if (swimlane) {
-          const nodeType = currentTool as 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji';
+          const nodeType = currentTool as 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'pentagon';
 
-          // 获取 currentEmoji 用于 emoji 节点
           const state = useCanvasStore.getState();
 
-          // 计算长方形节点的默认宽度和起止日期
           const defaultWidth = nodeType === 'rectangle' ? unitWidth * 2 : undefined;
 
           let nodeDate: Date;
           let nodeEndDate: Date | undefined;
 
           if (nodeType === 'rectangle' && defaultWidth) {
-            // 长方形：根据左右边缘计算起止日期（Stage内部x从0开始）
             const leftEdgeX = pos.x - defaultWidth / 2;
             const rightEdgeX = pos.x + defaultWidth / 2;
             nodeDate = xToDate(leftEdgeX, startDate, unitWidth, 0, timelineView);
             nodeEndDate = xToDate(rightEdgeX, startDate, unitWidth, 0, timelineView);
           } else {
-            // 其他节点：根据中心点计算日期（Stage内部x从0开始）
             nodeDate = xToDate(pos.x, startDate, unitWidth, 0, timelineView);
           }
 
-          // 根据节点类型设置默认名称
+          const sameTypeCount = nodes.filter(n => n.type === nodeType).length;
           const getDefaultName = () => {
             switch (nodeType) {
-              case 'diamond': return '里程碑';
-              case 'triangle': return '决策点';
-              case 'rectangle': return '活动';
-              case 'star': return '重点';
-              case 'circle': return '节点';
-              case 'hexagon': return '阶段';
-              case 'emoji': return '表情';
-              default: return '节点';
+              case 'diamond': return `里程碑${sameTypeCount + 1}`;
+              case 'triangle': return `决策点${sameTypeCount + 1}`;
+              case 'rectangle': return `活动${sameTypeCount + 1}`;
+              case 'star': return `重点${sameTypeCount + 1}`;
+              case 'circle': return `节点${sameTypeCount + 1}`;
+              case 'hexagon': return `阶段${sameTypeCount + 1}`;
+              case 'emoji': return `表情${sameTypeCount + 1}`;
+              case 'pentagon': return `G${sameTypeCount}`;
+              default: return `节点${sameTypeCount + 1}`;
             }
           };
 
@@ -451,7 +442,25 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
       node: nodeWithCalculatedX,
       isSelected,
       isConnectionStart,
-      onClick: () => handleNodeClick(node.id),
+      onClick: () => {
+        handleNodeClick(node.id);
+        // 需求3B：点击置顶 - 找到节点的 Konva Group 并置顶
+        const stage = stageRef.current;
+        if (stage) {
+          const layer = stage.findOne('Layer');
+          if (layer) {
+            const groups = layer.find('Group');
+            const targetGroup = groups.find((g: any) => {
+              const pos = g.position();
+              return Math.abs(pos.x - nodeWithCalculatedX.x) < 1 && Math.abs(pos.y - nodeWithCalculatedX.y) < 1;
+            });
+            if (targetGroup) {
+              targetGroup.moveToTop();
+              layer.batchDraw();
+            }
+          }
+        }
+      },
       onDrag: (x: number, y: number) => handleNodeDrag(node.id, x, y),
       onDragEnd: (x: number, y: number) => handleNodeDragEnd(node.id, x, y),
     };
@@ -475,6 +484,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
         return <CircleNode {...commonProps} />;
       case 'hexagon':
         return <HexagonNode {...commonProps} />;
+      case 'pentagon':
+        return <PentagonNode {...commonProps} />;
       case 'emoji':
         return <EmojiNode {...commonProps} />;
       default:
@@ -651,6 +662,34 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           width={Math.max(dimensions.width, totalWidth)}
           height={Math.max(dimensions.height, totalHeight)}
           onClick={handleStageClick}
+          onMouseMove={(e) => {
+            const stage = e.target.getStage();
+            const pos = stage?.getPointerPosition();
+
+            // 需求23：框选移动
+            if (isBoxSelecting && pos) {
+              setBoxSelectEnd({ x: pos.x / settings.zoom, y: pos.y / settings.zoom });
+            }
+
+            // 需求3C：悬停信息卡
+            if (!pos) { setHoverTooltip(null); return; }
+            const scaledPos = { x: pos.x / settings.zoom, y: pos.y / settings.zoom };
+            const hoveredNode = nodes.find(node => {
+              const calcX = node.type === 'rectangle'
+                ? dateToX(node.date, startDate, unitWidth, 0, timelineView) + (node.width || 100) / 2
+                : dateToX(node.date, startDate, unitWidth, 0, timelineView);
+              const nodeW = node.width || (node.type === 'rectangle' ? 100 : 40);
+              const nodeH = node.type === 'rectangle' ? 32 : 40;
+              return scaledPos.x >= calcX - nodeW / 2 && scaledPos.x <= calcX + nodeW / 2
+                && scaledPos.y >= node.y - nodeH / 2 && scaledPos.y <= node.y + nodeH / 2;
+            });
+            if (hoveredNode) {
+              setHoverTooltip({ x: pos.x + leftPanelWidth, y: pos.y, node: hoveredNode });
+            } else {
+              setHoverTooltip(null);
+            }
+          }}
+          onMouseLeave={() => setHoverTooltip(null)}
           onMouseDown={(e) => {
             // 需求23：框选开始
             if (currentTool === 'select') {
@@ -679,17 +718,6 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
                     setBoxSelectEnd({ x: scaledPos.x, y: scaledPos.y });
                   }
                 }
-              }
-            }
-          }}
-          onMouseMove={(e) => {
-            // 需求23：框选移动
-            if (isBoxSelecting) {
-              const stage = e.target.getStage();
-              const pos = stage?.getPointerPosition();
-              if (pos) {
-                // 问题4修复：将屏幕坐标除以zoom转换为画布坐标
-                setBoxSelectEnd({ x: pos.x / settings.zoom, y: pos.y / settings.zoom });
               }
             }
           }}
@@ -1093,6 +1121,27 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           className="fixed left-1/2 top-20 -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium"
         >
           📅 {dragTooltip.date}
+        </div>
+      )}
+
+      {/* 需求3C：悬停信息卡 */}
+      {hoverTooltip && (
+        <div
+          className="absolute bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 z-50 pointer-events-none text-xs"
+          style={{
+            left: hoverTooltip.x + 12,
+            top: hoverTooltip.y - 10,
+            maxWidth: 200,
+          }}
+        >
+          <div className="font-semibold text-gray-800">{hoverTooltip.node.name}</div>
+          <div className="text-gray-500 mt-0.5">
+            {formatShortDate(hoverTooltip.node.date)}
+            {hoverTooltip.node.endDate && ` - ${formatShortDate(hoverTooltip.node.endDate)}`}
+          </div>
+          <div className="text-gray-400 mt-0.5">
+            {swimlanes.find(s => s.id === hoverTooltip.node.swimlaneId)?.name || ''}
+          </div>
         </div>
       )}
       </div>

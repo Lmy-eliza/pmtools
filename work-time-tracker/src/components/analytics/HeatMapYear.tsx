@@ -55,7 +55,7 @@ export default function HeatMapYear({ data }: Props) {
   const gap = 2;
   const labelWidth = 24;
   const totalWidth = labelWidth + (maxWeekIndex + 1) * (cellSize + gap) + 20;
-  const totalHeight = 7 * (cellSize + gap) + 40;
+  const totalHeight = 7 * (cellSize + gap) + 24;
 
   const handleMouseEnter = (e: React.MouseEvent, cell: YearHeatMapCell | undefined) => {
     if (!cell) return;
@@ -71,8 +71,19 @@ export default function HeatMapYear({ data }: Props) {
 
   return (
     <div className="bg-white/60 rounded-2xl p-5 shadow-sm border border-white/50">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-        <span>🔥</span> 年度工作热力图
+      <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+        <span className="flex items-center gap-2"><span>🔥</span> 年度工作热力图</span>
+        <div className="flex items-center gap-1 text-[10px] text-gray-400">
+          <span>少</span>
+          {DAY_LEGEND_COLORS.map((item, i) => (
+            <div
+              key={i}
+              className="rounded-sm"
+              style={{ backgroundColor: item.color, width: 10, height: 10 }}
+            />
+          ))}
+          <span>多</span>
+        </div>
       </h3>
       <div className="overflow-x-auto">
         <svg width={totalWidth} height={totalHeight} className="mx-auto">
@@ -124,34 +135,6 @@ export default function HeatMapYear({ data }: Props) {
             })
           )}
 
-          {/* #9: Updated legend with dual colors */}
-          <text
-            x={totalWidth - 180}
-            y={totalHeight - 5}
-            fontSize="10"
-            fill="#9ca3af"
-          >
-            少
-          </text>
-          {DAY_LEGEND_COLORS.map((item, i) => (
-            <rect
-              key={i}
-              x={totalWidth - 150 + i * (cellSize + 2)}
-              y={totalHeight - 16}
-              width={cellSize}
-              height={cellSize}
-              rx={2}
-              fill={item.color}
-            />
-          ))}
-          <text
-            x={totalWidth - 150 + DAY_LEGEND_COLORS.length * (cellSize + 2) + 2}
-            y={totalHeight - 5}
-            fontSize="10"
-            fill="#9ca3af"
-          >
-            多
-          </text>
         </svg>
       </div>
 
