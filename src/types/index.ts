@@ -1,6 +1,9 @@
 // 节点类型枚举
 export type NodeType = 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'pentagon';
 
+// 节点状态
+export type NodeStatus = 'on_track' | 'completed' | 'delayed';
+
 // 基础节点接口
 export interface PlanNode {
   id: string;
@@ -14,6 +17,7 @@ export interface PlanNode {
   width?: number; // 仅用于矩形节点
   endDate?: Date; // 仅用于矩形节点（活动结束日期）
   emoji?: string; // 仅用于 emoji 节点
+  status?: NodeStatus;
 }
 
 // 连接线锚点位置类型
@@ -63,6 +67,7 @@ export interface Swimlane {
 export interface ProjectData {
   id: string;
   name: string;
+  schemaVersion?: string;
   startDate: Date;
   endDate: Date;
   swimlanes: Swimlane[];

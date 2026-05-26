@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# Netlify Functions 代理（放在 catch-all 之前，优先匹配）
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA 路由回退（所有路径都返回 index.html）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

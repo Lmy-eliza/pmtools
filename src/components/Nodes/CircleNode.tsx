@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Group, Circle as KonvaCircle, Text, Rect } from 'react-konva';
 import { formatShortDate } from '../../utils/dateUtils';
 import type { PlanNode } from '../../types';
+import { getStatusColor } from '../../utils/statusUtils';
 
 interface CircleNodeProps {
   node: PlanNode;
@@ -81,7 +82,7 @@ export const CircleNode: React.FC<CircleNodeProps> = ({
       {/* 圆形主体 */}
       <KonvaCircle
         radius={radius}
-        fill={node.color}
+        fill={getStatusColor(node.color, node.status)}
         shadowColor="rgba(0,0,0,0.2)"
         shadowBlur={4}
         shadowOffset={{ x: 0, y: 2 }}

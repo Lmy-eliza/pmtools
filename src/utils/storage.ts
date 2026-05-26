@@ -1,6 +1,64 @@
 import Dexie, { type Table } from 'dexie';
-import type { ProjectData, ProjectVersion } from '../types';
+import type { ProjectData, ProjectVersion, NodeType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+
+const VALID_NODE_TYPES: NodeType[] = [
+  'diamond', 'triangle', 'rectangle', 'star', 'circle', 'hexagon', 'emoji', 'pentagon'
+];
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export function validateProjectJSON(data: any): ValidationResult {
+  const errors: string[] = [];
+
+  if (!data || typeof data !== 'object') {
+    return { valid: false, errors: ['输入不是有效的 JSON 对象'] };
+  }
+
+  if (!data.name || typeof data.name !== 'string') {
+    errors.push('缺少必填字段 "name"（项目名称）');
+  }
+  if (!Array.isArray(data.nodes)) {
+    errors.push('缺少必填字段 "nodes"（节点数组）');
+  }
+  if (!Array.isArray(data.swimlanes)) {
+    errors.push('缺少必填字段 "swimlanes"（泳道数组）');
+  }
+
+  if (!Array.isArray(data.nodes) || !Array.isArray(data.swimlanes)) {
+    return { valid: false, errors };
+  }
+
+  const swimlaneIds = new Set(data.swimlanes.map((s: any) => s.id));
+
+  data.nodes.forEach((node: any, index: number) => {
+    const label = node.name || '未命名';
+    if (!VALID_NODE_TYPES.includes(node.type)) {
+      errors.push(`nodes[${index}]（${label}）类型 "${node.type}" 无效，有效类型：${VALID_NODE_TYPES.join(', ')}`);
+    }
+    if (node.swimlaneId && !swimlaneIds.has(node.swimlaneId)) {
+      errors.push(`nodes[${index}]（${label}）的 swimlaneId "${node.swimlaneId}" 未在 swimlanes 中定义`);
+    }
+    if (node.date && isNaN(Date.parse(node.date))) {
+      errors.push(`nodes[${index}]（${label}）的 date "${node.date}" 不是有效日期`);
+    }
+    if (node.endDate && isNaN(Date.parse(node.endDate))) {
+      errors.push(`nodes[${index}]（${label}）的 endDate "${node.endDate}" 不是有效日期`);
+    }
+  });
+
+  if (data.startDate && isNaN(Date.parse(data.startDate))) {
+    errors.push(`startDate "${data.startDate}" 不是有效日期`);
+  }
+  if (data.endDate && isNaN(Date.parse(data.endDate))) {
+    errors.push(`endDate "${data.endDate}" 不是有效日期`);
+  }
+
+  return { valid: errors.length === 0, errors };
+}
 
 class ProjectDatabase extends Dexie {
   projects!: Table<ProjectData, string>;
@@ -65,22 +123,35 @@ export async function deleteProject(id: string): Promise<void> {
 }
 
 export function exportToJSON(project: ProjectData): string {
-  return JSON.stringify(project, null, 2);
+  const exportData = {
+    ...project,
+    schemaVersion: '1.0',
+  };
+  return JSON.stringify(exportData, null, 2);
 }
 
 export function importFromJSON(json: string): ProjectData {
   const data = JSON.parse(json);
+
+  const validation = validateProjectJSON(data);
+  if (!validation.valid) {
+    throw new Error(`JSON 格式验证失败：\n${validation.errors.join('\n')}`);
+  }
+
   return {
     ...data,
+    schemaVersion: data.schemaVersion || undefined,
     startDate: new Date(data.startDate),
     endDate: new Date(data.endDate),
-    createdAt: new Date(data.createdAt),
-    updatedAt: new Date(data.updatedAt),
+    createdAt: new Date(data.createdAt || new Date()),
+    updatedAt: new Date(data.updatedAt || new Date()),
     nodes: data.nodes.map((n: any) => ({
       ...n,
       date: new Date(n.date),
       endDate: n.endDate ? new Date(n.endDate) : undefined,
     })),
+    connections: data.connections || [],
+    constraints: data.constraints || [],
   };
 }
 

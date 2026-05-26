@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Group, Line, Text, Rect } from 'react-konva';
 import { formatShortDate } from '../../utils/dateUtils';
 import type { PlanNode } from '../../types';
+import { getStatusColor } from '../../utils/statusUtils';
 
 interface DiamondNodeProps {
   node: PlanNode;
@@ -106,7 +107,7 @@ export const DiamondNode: React.FC<DiamondNodeProps> = ({
       <Line
         points={diamondPoints}
         closed
-        fill={node.color}
+        fill={getStatusColor(node.color, node.status)}
         shadowColor="rgba(0,0,0,0.2)"
         shadowBlur={4}
         shadowOffset={{ x: 0, y: 2 }}

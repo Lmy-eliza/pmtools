@@ -75,6 +75,10 @@ interface CanvasState {
   currentEmoji: string;
   setCurrentEmoji: (emoji: string) => void;
 
+  // 泳道冻结
+  frozenSwimlaneCount: number;
+  setFrozenSwimlaneCount: (count: number) => void;
+
   // 连线模式
   connectionStart: string | null;
   setConnectionStart: (nodeId: string | null) => void;
@@ -448,6 +452,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   currentEmoji: '😀',
   setCurrentEmoji: (emoji) => set({ currentEmoji: emoji }),
 
+  // 泳道冻结
+  frozenSwimlaneCount: 0,
+  setFrozenSwimlaneCount: (count) => set({ frozenSwimlaneCount: count }),
+
   // 连线模式
   connectionStart: null,
   setConnectionStart: (nodeId) => set({ connectionStart: nodeId }),
@@ -506,6 +514,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       selectedConnectionIds: [],
       selectedConstraintId: null,
       connectionStyle: 'simple',
+      frozenSwimlaneCount: 0,
       settings: defaultSettings,
       currentTool: 'select',
       currentEmoji: '😀',

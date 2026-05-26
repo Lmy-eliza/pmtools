@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { Group, Line, Text } from 'react-konva';
+import { Group, Line, Text, Rect } from 'react-konva';
 import { formatShortDate } from '../../utils/dateUtils';
 import type { PlanNode } from '../../types';
+import { getStatusColor } from '../../utils/statusUtils';
 
 interface PentagonNodeProps {
   node: PlanNode;
@@ -55,9 +56,6 @@ export const PentagonNode: React.FC<PentagonNodeProps> = ({
     -(w + pad), waistY + pad * 0.5,
   ].flat();
 
-  // 内部文字区域：在矩形部分（topY 到 waistY）的中心
-  const textAreaCenterY = (topY + waistY) / 2;
-
   return (
     <Group
       ref={groupRef}
@@ -76,6 +74,25 @@ export const PentagonNode: React.FC<PentagonNodeProps> = ({
       }}
       style={{ cursor: 'pointer' }}
     >
+      {/* 日期白底 — 移到尖角下方 */}
+      <Rect
+        x={-32}
+        y={tipY + 4}
+        width={64}
+        height={14}
+        fill="rgba(255,255,255,0.85)"
+        cornerRadius={3}
+      />
+      <Text
+        text={formatShortDate(node.date)}
+        fontSize={10}
+        fill="#6b7280"
+        y={tipY + 5}
+        width={60}
+        offsetX={30}
+        align="center"
+      />
+
       {/* 选中/连线起点高亮 */}
       {(isSelected || isConnectionStart) && (
         <Line
@@ -92,35 +109,27 @@ export const PentagonNode: React.FC<PentagonNodeProps> = ({
       <Line
         points={pentagonPoints}
         closed
-        fill={node.color}
-        stroke={node.color}
+        fill={getStatusColor(node.color, node.status)}
+        stroke={getStatusColor(node.color, node.status)}
         strokeWidth={1}
         shadowColor="rgba(0,0,0,0.2)"
         shadowBlur={4}
         shadowOffset={{ x: 0, y: 2 }}
       />
 
-      {/* 内部文字：名称（第一行） */}
+      {/* 节点名称 — 在五边形矩形体内居中 */}
       <Text
         text={node.name}
-        fontSize={11}
-        fill="#1d1d1f"
+        fontSize={node.name.length > 5 ? 8 : 10}
+        fill="#ffffff"
+        x={-w + 2}
+        y={topY + 2}
+        width={(w - 2) * 2}
+        height={waistY - topY - 4}
+        align="center"
+        verticalAlign="middle"
+        wrap="char"
         fontStyle="bold"
-        y={textAreaCenterY - 8}
-        width={w * 2 - 4}
-        offsetX={w - 2}
-        align="center"
-      />
-
-      {/* 内部文字：日期（第二行） */}
-      <Text
-        text={formatShortDate(node.date)}
-        fontSize={10}
-        fill="#374151"
-        y={textAreaCenterY + 5}
-        width={w * 2 - 4}
-        offsetX={w - 2}
-        align="center"
       />
     </Group>
   );

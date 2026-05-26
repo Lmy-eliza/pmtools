@@ -35,6 +35,7 @@ import {
   ClipboardPaste,
 } from 'lucide-react';
 import { useCanvasStore } from '../../stores/canvasStore';
+import { LoginButton } from '../Auth/LoginButton';
 import type { ToolType, TimelineView } from '../../types';
 
 interface ToolButtonProps {
@@ -529,6 +530,11 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
 
       {/* 右侧空白区域 */}
       <div className="flex-1" />
+
+      {/* 飞书登录按钮 */}
+      <LoginButton />
+
+      <div className="toolbar-divider" />
 
       {/* 帮助 */}
       <ToolButton

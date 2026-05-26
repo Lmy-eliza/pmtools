@@ -292,6 +292,20 @@ export const NodePropertyPanel: React.FC = () => {
           </div>
         </div>
 
+        {/* 状态 */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">状态</label>
+          <select
+            value={selectedNode.status ?? 'on_track'}
+            onChange={(e) => updateNode(selectedNode.id, { status: e.target.value as 'on_track' | 'completed' | 'delayed' })}
+            className="input"
+          >
+            <option value="on_track">进行中</option>
+            <option value="completed">已完成</option>
+            <option value="delayed">延期</option>
+          </select>
+        </div>
+
         {/* 宽度（仅长方形） - 问题6修复：保留2位小数 */}
         {selectedNode.type === 'rectangle' && (
           <div>

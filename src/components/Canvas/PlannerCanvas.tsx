@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Rect, Line, Text, Group } from 'react-konva';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { xToDate, formatDate, formatShortDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
@@ -12,9 +12,10 @@ import { EmojiNode } from '../Nodes/EmojiNode';
 import { PentagonNode } from '../Nodes/PentagonNode';
 import { ConnectionLine } from '../Nodes/ConnectionLine';
 import { defaultColors } from '../../data/presets';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2, Pin } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
-import type { PlanNode } from '../../types';
+import type { PlanNode, TimelineView } from '../../types';
+import { computeLayout, findSwimlaneAtY } from '../../utils/layoutEngine';
 
 const DEFAULT_LEFT_PANEL_WIDTH = 120;
 const MIN_LEFT_PANEL_WIDTH = 80;
@@ -51,6 +52,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
   const [boxSelectEnd, setBoxSelectEnd] = useState<{ x: number; y: number } | null>(null);
   // 需求3C：悬停信息卡
   const [hoverTooltip, setHoverTooltip] = useState<{ x: number; y: number; node: PlanNode } | null>(null);
+  // 泳道冻结：追踪垂直滚动位置
+  const [scrollY, setScrollY] = useState(0);
 
   const {
     projectName,
@@ -77,9 +80,10 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     currentTool,
     connectionStart,
     setConnectionStart,
-    setCurrentTool,
     addConnection,
     applyConstraints,
+    frozenSwimlaneCount,
+    setFrozenSwimlaneCount,
   } = useCanvasStore();
 
   // 暴露 stageRef 和内容尺寸给父组件用于复制图片功能
@@ -91,7 +95,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
       const width = getUnitWidth(view);
       const units = generateTimelineUnits(startDate, endDate, view);
       const timelineWidth = units.length * width;
-      const contentHeight = HEADER_HEIGHT + swimlanes.length * settings.swimlaneHeight;
+      const layoutResult = computeLayout(nodes, swimlanes, settings, startDate, width, view as TimelineView, HEADER_HEIGHT);
+      const contentHeight = layoutResult.totalHeight;
       return {
         width: leftPanelWidth + timelineWidth,
         height: contentHeight,
@@ -116,10 +121,15 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // 同步左侧泳道列表的垂直滚动
+  // 同步左侧泳道列表的垂直滚动 + 追踪滚动位置
   const handleCanvasScroll = () => {
-    if (canvasContainerRef.current && swimlaneListRef.current) {
-      swimlaneListRef.current.scrollTop = canvasContainerRef.current.scrollTop;
+    if (canvasContainerRef.current) {
+      if (swimlaneListRef.current) {
+        // 冻结行已从 sidebar 列表中移除，需要减去冻结区域高度
+        const frozenH = frozenSwimlaneCount > 0 ? frozenAreaHeight * settings.zoom : 0;
+        swimlaneListRef.current.scrollTop = Math.max(0, canvasContainerRef.current.scrollTop - frozenH);
+      }
+      setScrollY(canvasContainerRef.current.scrollTop);
     }
   };
 
@@ -130,7 +140,35 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
 
   // 使用时间单元数量和动态单位宽度计算总宽度（Stage内部不需要加leftPanelWidth，因为Stage已经在右侧区域内）
   const totalWidth = timelineUnits.length * unitWidth;
-  const totalHeight = HEADER_HEIGHT + swimlanes.length * settings.swimlaneHeight;
+
+  const layout = useMemo(() =>
+    computeLayout(nodes, swimlanes, settings, startDate, unitWidth, timelineView as TimelineView, HEADER_HEIGHT),
+    [nodes, swimlanes, settings, startDate, unitWidth, timelineView]
+  );
+  const totalHeight = layout.totalHeight;
+
+  // 冻结区域高度
+  const frozenAreaHeight = useMemo(() => {
+    let h = 0;
+    for (let i = 0; i < frozenSwimlaneCount && i < swimlanes.length; i++) {
+      h += layout.swimlaneHeights.get(swimlanes[i].id) ?? settings.swimlaneHeight;
+    }
+    return h;
+  }, [frozenSwimlaneCount, swimlanes, layout.swimlaneHeights, settings.swimlaneHeight]);
+
+  const isFrozenSwimlane = (swimlaneId: string) => {
+    const idx = swimlanes.findIndex(s => s.id === swimlaneId);
+    return idx >= 0 && idx < frozenSwimlaneCount;
+  };
+
+  // 📌 点击处理
+  const handlePinClick = (swimlaneIndex: number) => {
+    if (swimlaneIndex + 1 === frozenSwimlaneCount) {
+      setFrozenSwimlaneCount(swimlaneIndex);
+    } else {
+      setFrozenSwimlaneCount(swimlaneIndex + 1);
+    }
+  };
 
   // 计算今日线位置（Stage内部x从0开始）
   const today = new Date();
@@ -146,92 +184,79 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
 
   // 处理画布点击
   const handleStageClick = (e: any) => {
-    // 获取点击位置
     const stage = e.target.getStage();
-    const pos = stage.getPointerPosition();
+    const rawPos = stage.getPointerPosition();
 
-    if (!pos) return;
+    if (!rawPos) return;
+
+    // 将屏幕坐标转换为画布逻辑坐标（与 onMouseDown/onMouseMove 一致）
+    const pos = { x: rawPos.x / settings.zoom, y: rawPos.y / settings.zoom };
 
     // 检查是否点击在节点上（节点有自己的点击处理）
     const clickedOnNode = e.target.getParent()?.className === 'Group' &&
                           e.target.getParent()?.attrs?.draggable === true;
 
-    if (clickedOnNode) {
-      // 点击在节点上，不处理（节点有自己的onClick）
-      return;
-    }
+    if (clickedOnNode) return;
 
-    // 问题14修复：检查是否点击在任何节点区域内（即使没有触发节点的 onClick）
+    // 碰撞检测：用 dateToX 计算节点的实际渲染位置，而非 stale 的 node.x
     const clickedInsideNode = nodes.some(node => {
+      const calcX = node.type === 'rectangle'
+        ? dateToX(node.date, startDate, unitWidth, 0, timelineView) + (node.width || 100) / 2
+        : dateToX(node.date, startDate, unitWidth, 0, timelineView);
       const nodeWidth = node.width || (node.type === 'rectangle' ? 100 : 40);
       const nodeHeight = node.type === 'rectangle' ? 32 : 40;
-      return pos.x >= node.x - nodeWidth / 2 &&
-             pos.x <= node.x + nodeWidth / 2 &&
+      return pos.x >= calcX - nodeWidth / 2 &&
+             pos.x <= calcX + nodeWidth / 2 &&
              pos.y >= node.y - nodeHeight / 2 &&
              pos.y <= node.y + nodeHeight / 2;
     });
 
-    if (clickedInsideNode) {
-      // 点击在已有节点区域内，不创建新节点
-      return;
-    }
+    if (clickedInsideNode) return;
 
     if (currentTool === 'select') {
       clearSelection();
       setConnectionStart(null);
     } else if (['diamond', 'triangle', 'rectangle', 'star', 'circle', 'hexagon', 'emoji', 'pentagon'].includes(currentTool)) {
-      // 添加新节点 - 检查点击位置是否在泳道区域内（Stage内部x从0开始）
       if (pos.x > 0 && pos.y > HEADER_HEIGHT) {
-        // 防止误添加：检查是否点击在已选中节点附近
+        // 创建模式下先清除选中，避免"近选中节点保护区"阻止后续连续创建
         if (selectedNodeIds.length > 0) {
-          const clickedNearSelected = selectedNodeIds.some(id => {
-            const selectedNode = nodes.find(n => n.id === id);
-            if (!selectedNode) return false;
-            const nodeWidth = selectedNode.width || 60;
-            return Math.abs(pos.x - selectedNode.x) < nodeWidth / 2 + 30
-                && Math.abs(pos.y - selectedNode.y) < 40;
-          });
-          if (clickedNearSelected) return;
+          clearSelection();
         }
 
-        const swimlaneIndex = Math.floor((pos.y - HEADER_HEIGHT) / settings.swimlaneHeight);
+        const swimlaneIndex = findSwimlaneAtY(pos.y, swimlanes, layout);
         const swimlane = swimlanes[swimlaneIndex];
 
         if (swimlane) {
           const nodeType = currentTool as 'diamond' | 'triangle' | 'rectangle' | 'star' | 'circle' | 'hexagon' | 'emoji' | 'pentagon';
 
-          // 获取 currentEmoji 用于 emoji 节点
           const state = useCanvasStore.getState();
 
-          // 计算长方形节点的默认宽度和起止日期
           const defaultWidth = nodeType === 'rectangle' ? unitWidth * 2 : undefined;
 
           let nodeDate: Date;
           let nodeEndDate: Date | undefined;
 
           if (nodeType === 'rectangle' && defaultWidth) {
-            // 长方形：根据左右边缘计算起止日期（Stage内部x从0开始）
             const leftEdgeX = pos.x - defaultWidth / 2;
             const rightEdgeX = pos.x + defaultWidth / 2;
             nodeDate = xToDate(leftEdgeX, startDate, unitWidth, 0, timelineView);
             nodeEndDate = xToDate(rightEdgeX, startDate, unitWidth, 0, timelineView);
           } else {
-            // 其他节点：根据中心点计算日期（Stage内部x从0开始）
             nodeDate = xToDate(pos.x, startDate, unitWidth, 0, timelineView);
           }
 
-          // 根据节点类型设置默认名称
+          const sameTypeCount = nodes.filter(n => n.type === nodeType).length;
           const getDefaultName = () => {
             switch (nodeType) {
-              case 'diamond': return '里程碑';
-              case 'triangle': return '决策点';
-              case 'rectangle': return '活动';
-              case 'star': return '重点';
-              case 'circle': return '节点';
-              case 'hexagon': return '阶段';
-              case 'emoji': return '表情';
-              case 'pentagon': return 'G0';
-              default: return '节点';
+              case 'diamond': return `里程碑${sameTypeCount + 1}`;
+              case 'triangle': return `决策点${sameTypeCount + 1}`;
+              case 'rectangle': return `活动${sameTypeCount + 1}`;
+              case 'star': return `重点${sameTypeCount + 1}`;
+              case 'circle': return `节点${sameTypeCount + 1}`;
+              case 'hexagon': return `阶段${sameTypeCount + 1}`;
+              case 'emoji': return `表情${sameTypeCount + 1}`;
+              case 'pentagon': return `G${sameTypeCount}`;
+              default: return `节点${sameTypeCount + 1}`;
             }
           };
 
@@ -240,14 +265,13 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
             name: getDefaultName(),
             color: defaultColors[nodeType] || defaultColors.diamond,
             x: pos.x,
-            y: HEADER_HEIGHT + swimlaneIndex * settings.swimlaneHeight + settings.swimlaneHeight / 2,
+            y: (layout.swimlaneTopYs.get(swimlane.id) ?? HEADER_HEIGHT) + (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) / 2,
             date: nodeDate,
             swimlaneId: swimlane.id,
             width: defaultWidth,
             endDate: nodeEndDate,
             emoji: nodeType === 'emoji' ? state.currentEmoji : undefined,
           });
-          setCurrentTool('select');
         }
       }
     }
@@ -283,12 +307,16 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     const node = nodes.find((n) => n.id === id);
     if (!node) return;
 
-    // 计算新的泳道
-    const swimlaneIndex = Math.floor((y - HEADER_HEIGHT) / settings.swimlaneHeight);
-    const clampedIndex = Math.max(0, Math.min(swimlaneIndex, swimlanes.length - 1));
+    // 计算新的泳道（使用动态布局）
+    const rawIndex = findSwimlaneAtY(y, swimlanes, layout);
+    const clampedIndex = Math.max(0, Math.min(rawIndex, swimlanes.length - 1));
     const swimlane = swimlanes[clampedIndex];
 
-    const newY = HEADER_HEIGHT + clampedIndex * settings.swimlaneHeight + settings.swimlaneHeight / 2;
+    // 临时更新节点泳道，重算布局以获取避障后的Y位置
+    const tempNodes = nodes.map(n => n.id === id ? { ...n, swimlaneId: swimlane?.id ?? n.swimlaneId } : n);
+    const newLayout = computeLayout(tempNodes, swimlanes, settings, startDate, unitWidth, timelineView as TimelineView, HEADER_HEIGHT);
+    const newY = newLayout.nodeYPositions.get(id)
+      ?? ((layout.swimlaneTopYs.get(swimlane?.id ?? '') ?? HEADER_HEIGHT) + (layout.swimlaneHeights.get(swimlane?.id ?? '') ?? settings.swimlaneHeight) / 2);
 
     // 长方形节点：根据左右边缘计算起止日期（Stage内部x从0开始）
     if (node.type === 'rectangle') {
@@ -440,21 +468,21 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     const isSelected = selectedNodeIds.includes(node.id);
     const isConnectionStart = connectionStart === node.id;
 
-    // 问题6修复：根据日期动态计算X坐标（Stage内部x从0开始）
-    // 问题5修复（第二轮）：长方形节点使用左边缘日期计算，然后加上宽度的一半得到中心点
-    let nodeWithCalculatedX: PlanNode;
+    // 动态计算X坐标（日期→像素）和Y坐标（布局引擎避障）
+    const layoutY = layout.nodeYPositions.get(node.id) ?? node.y;
+    let nodeWithCalculatedPos: PlanNode;
     if (node.type === 'rectangle') {
       const leftEdgeX = dateToX(node.date, startDate, unitWidth, 0, timelineView);
       const calculatedX = leftEdgeX + (node.width || 100) / 2;
-      nodeWithCalculatedX = { ...node, x: calculatedX };
+      nodeWithCalculatedPos = { ...node, x: calculatedX, y: layoutY };
     } else {
       const calculatedX = dateToX(node.date, startDate, unitWidth, 0, timelineView);
-      nodeWithCalculatedX = { ...node, x: calculatedX };
+      nodeWithCalculatedPos = { ...node, x: calculatedX, y: layoutY };
     }
 
     const commonProps = {
       key: node.id,
-      node: nodeWithCalculatedX,
+      node: nodeWithCalculatedPos,
       isSelected,
       isConnectionStart,
       onClick: () => {
@@ -467,7 +495,7 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
             const groups = layer.find('Group');
             const targetGroup = groups.find((g: any) => {
               const pos = g.position();
-              return Math.abs(pos.x - nodeWithCalculatedX.x) < 1 && Math.abs(pos.y - nodeWithCalculatedX.y) < 1;
+              return Math.abs(pos.x - nodeWithCalculatedPos.x) < 1 && Math.abs(pos.y - nodeWithCalculatedPos.y) < 1;
             });
             if (targetGroup) {
               targetGroup.moveToTop();
@@ -586,74 +614,111 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           </div>
         </div>
 
+        {/* 冻结泳道标签（不随滚动） */}
+        {frozenSwimlaneCount > 0 && (
+          <div className="flex-shrink-0 border-b-2 border-gray-300 shadow-sm">
+            {swimlanes.slice(0, frozenSwimlaneCount).map((swimlane, i) => {
+              const slH = (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) * settings.zoom;
+              return (
+                <div
+                  key={swimlane.id}
+                  className="group relative flex flex-col border-b border-gray-200 px-1 bg-blue-50/30"
+                  style={{ height: slH, minHeight: slH }}
+                >
+                  <div className="flex items-center flex-1">
+                    <GripVertical size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400" />
+                    <div className="relative flex-1 min-w-0">
+                      <textarea
+                        value={swimlane.name}
+                        maxLength={MAX_NAME_LENGTH}
+                        onChange={(e) => {
+                          updateSwimlane(swimlane.id, { name: e.target.value });
+                          const target = e.target as HTMLTextAreaElement;
+                          target.style.height = 'auto';
+                          target.style.height = Math.min(target.scrollHeight, slH - 20) + 'px';
+                        }}
+                        className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
+                        style={{ lineHeight: '1.3', wordBreak: 'break-all', fontSize: swimlane.name.length > 15 ? '12px' : '14px' }}
+                        placeholder="泳道名称"
+                        rows={1}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handlePinClick(i)}
+                    className="absolute top-1 right-1 text-blue-500 p-0.5"
+                    title="取消冻结"
+                  >
+                    <Pin size={12} className="fill-blue-500" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* 泳道名称列表 - 与右侧画布同步垂直滚动 */}
         <div
           ref={swimlaneListRef}
           className="flex-1 overflow-hidden"
         >
-          {swimlanes.map((swimlane) => (
-            <div
-              key={swimlane.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, swimlane.id)}
-              onDragOver={(e) => handleDragOver(e, swimlane.id)}
-              onDragEnd={handleDragEnd}
-              className={`group relative flex flex-col border-b border-gray-200 px-1 transition-colors ${
-                dragOverSwimlane === swimlane.id ? 'bg-blue-50' : ''
-              } ${draggedSwimlane === swimlane.id ? 'opacity-50' : ''}`}
-              style={{
-                height: settings.swimlaneHeight * settings.zoom,
-                minHeight: settings.swimlaneHeight * settings.zoom,
-              }}
-            >
-              {/* 上部区域：拖拽手柄和名称 */}
-              <div className="flex items-center flex-1">
-                {/* 拖拽手柄 */}
-                <GripVertical
-                  size={14}
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400"
-                />
-
-                {/* 名称输入 - 改为 textarea 支持换行 */}
-                <div className="relative flex-1 min-w-0">
-                  <textarea
-                    value={swimlane.name}
-                    maxLength={MAX_NAME_LENGTH}
-                    onChange={(e) => {
-                      updateSwimlane(swimlane.id, { name: e.target.value });
-                      // 自动调整高度
-                      const target = e.target as HTMLTextAreaElement;
-                      target.style.height = 'auto';
-                      target.style.height = Math.min(target.scrollHeight, settings.swimlaneHeight * settings.zoom - 20) + 'px';
-                    }}
-                    className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
-                    style={{
-                      lineHeight: '1.3',
-                      wordBreak: 'break-all',
-                      fontSize: swimlane.name.length > 15 ? '12px' : '14px',
-                    }}
-                    placeholder="泳道名称"
-                    rows={1}
-                  />
-                  {/* 字数提示 */}
-                  {swimlane.name.length >= MAX_NAME_LENGTH && (
-                    <div className="absolute -bottom-3 left-0 right-0 text-xs text-red-500 text-center">
-                      已达上限
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 删除按钮 - 移到右下角 */}
-              <button
-                onClick={() => handleDeleteSwimlane(swimlane.id)}
-                className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-1"
-                title="删除泳道"
+          {swimlanes.map((swimlane, globalIndex) => {
+            if (globalIndex < frozenSwimlaneCount) return null;
+            const slH = (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) * settings.zoom;
+            return (
+              <div
+                key={swimlane.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, swimlane.id)}
+                onDragOver={(e) => handleDragOver(e, swimlane.id)}
+                onDragEnd={handleDragEnd}
+                className={`group relative flex flex-col border-b border-gray-200 px-1 transition-colors ${
+                  dragOverSwimlane === swimlane.id ? 'bg-blue-50' : ''
+                } ${draggedSwimlane === swimlane.id ? 'opacity-50' : ''}`}
+                style={{ height: slH, minHeight: slH }}
               >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center flex-1">
+                  <GripVertical size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400" />
+                  <div className="relative flex-1 min-w-0">
+                    <textarea
+                      value={swimlane.name}
+                      maxLength={MAX_NAME_LENGTH}
+                      onChange={(e) => {
+                        updateSwimlane(swimlane.id, { name: e.target.value });
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        target.style.height = Math.min(target.scrollHeight, slH - 20) + 'px';
+                      }}
+                      className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
+                      style={{ lineHeight: '1.3', wordBreak: 'break-all', fontSize: swimlane.name.length > 15 ? '12px' : '14px' }}
+                      placeholder="泳道名称"
+                      rows={1}
+                    />
+                    {swimlane.name.length >= MAX_NAME_LENGTH && (
+                      <div className="absolute -bottom-3 left-0 right-0 text-xs text-red-500 text-center">已达上限</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 📌 图标 — hover 显示 */}
+                <button
+                  onClick={() => handlePinClick(globalIndex)}
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-gray-400 hover:text-blue-500 p-0.5"
+                  title="冻结到此行"
+                >
+                  <Pin size={12} />
+                </button>
+
+                <button
+                  onClick={() => handleDeleteSwimlane(swimlane.id)}
+                  className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-1"
+                  title="删除泳道"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -898,28 +963,27 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
             );
           })}
 
-          {/* 泳道背景和网格线（Stage内部x从0开始） */}
+          {/* 泳道背景和网格线（动态高度） */}
           {swimlanes.map((swimlane, index) => {
-            const y = HEADER_HEIGHT + index * settings.swimlaneHeight;
+            const slTop = layout.swimlaneTopYs.get(swimlane.id) ?? (HEADER_HEIGHT + index * settings.swimlaneHeight);
+            const slHeight = layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight;
             return (
               <Group key={`swimlane-bg-${swimlane.id}`}>
-                {/* 泳道背景 */}
                 <Rect
                   x={0}
-                  y={y}
+                  y={slTop}
                   width={timelineUnits.length * unitWidth}
-                  height={settings.swimlaneHeight}
+                  height={slHeight}
                   fill={index % 2 === 0 ? '#ffffff' : '#fafafa'}
                   stroke="#e5e7eb"
                   strokeWidth={1}
                 />
-                {/* 中心轴线 */}
                 <Line
                   points={[
                     0,
-                    y + settings.swimlaneHeight / 2,
+                    slTop + slHeight / 2,
                     timelineUnits.length * unitWidth,
-                    y + settings.swimlaneHeight / 2,
+                    slTop + slHeight / 2,
                   ]}
                   stroke="#e5e7eb"
                   strokeWidth={1}
@@ -1031,6 +1095,97 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
 
           {/* 节点 */}
           {nodes.map(renderNode)}
+
+          {/* 泳道冻结覆盖层 */}
+          {frozenSwimlaneCount > 0 && scrollY > 0 && (() => {
+            const scrollYLogical = scrollY / settings.zoom;
+            const frozenBottom = HEADER_HEIGHT + frozenAreaHeight;
+            return (
+              <Group y={scrollYLogical}>
+                {/* 白色底覆盖滚动内容 */}
+                <Rect x={0} y={0} width={totalWidth} height={frozenBottom} fill="#ffffff" />
+
+                {/* 重绘年份表头 */}
+                {(() => {
+                  let xOff = 0;
+                  const els: React.ReactNode[] = [];
+                  if (timelineView === 'day' || timelineView === 'week') {
+                    const groups = new Map<string, Date[]>();
+                    timelineUnits.forEach(u => {
+                      const k = `${u.getFullYear()}-${String(u.getMonth() + 1).padStart(2, '0')}`;
+                      if (!groups.has(k)) groups.set(k, []);
+                      groups.get(k)!.push(u);
+                    });
+                    groups.forEach((units, k) => {
+                      const w = units.length * unitWidth;
+                      const [yr, mo] = k.split('-');
+                      els.push(
+                        <Group key={`fy-${k}`}>
+                          <Rect x={xOff} y={0} width={w} height={30} fill="#f9fafb" stroke="#e5e7eb" strokeWidth={1} />
+                          <Text x={xOff} y={0} width={w} height={30} text={`${yr}年${parseInt(mo)}月`} fontSize={14} fontStyle="bold" fill="#374151" align="center" verticalAlign="middle" />
+                        </Group>
+                      );
+                      xOff += w;
+                    });
+                  } else {
+                    const groups = new Map<number, Date[]>();
+                    timelineUnits.forEach(u => {
+                      const y = u.getFullYear();
+                      if (!groups.has(y)) groups.set(y, []);
+                      groups.get(y)!.push(u);
+                    });
+                    groups.forEach((units, yr) => {
+                      const w = units.length * unitWidth;
+                      els.push(
+                        <Group key={`fy-${yr}`}>
+                          <Rect x={xOff} y={0} width={w} height={30} fill="#f9fafb" stroke="#e5e7eb" strokeWidth={1} />
+                          <Text x={xOff} y={0} width={w} height={30} text={String(yr)} fontSize={14} fontStyle="bold" fill="#374151" align="center" verticalAlign="middle" />
+                        </Group>
+                      );
+                      xOff += w;
+                    });
+                  }
+                  return els;
+                })()}
+
+                {/* 重绘时间单元表头 */}
+                {timelineUnits.map((unit, idx) => (
+                  <Group key={`fu-${idx}`}>
+                    <Rect x={idx * unitWidth} y={30} width={unitWidth} height={30} fill="#ffffff" stroke="#e5e7eb" strokeWidth={1} />
+                    <Text x={idx * unitWidth} y={30} width={unitWidth} height={30} text={formatTimelineUnit(unit, timelineView)} fontSize={12} fill="#6b7280" align="center" verticalAlign="middle" />
+                  </Group>
+                ))}
+
+                {/* 冻结泳道背景 */}
+                {swimlanes.slice(0, frozenSwimlaneCount).map((sl, idx) => {
+                  const slTop = layout.swimlaneTopYs.get(sl.id) ?? HEADER_HEIGHT;
+                  const slH = layout.swimlaneHeights.get(sl.id) ?? settings.swimlaneHeight;
+                  return (
+                    <Group key={`fbg-${sl.id}`}>
+                      <Rect x={0} y={slTop} width={totalWidth} height={slH} fill={idx % 2 === 0 ? '#ffffff' : '#fafafa'} stroke="#e5e7eb" strokeWidth={1} />
+                      <Line points={[0, slTop + slH / 2, totalWidth, slTop + slH / 2]} stroke="#e5e7eb" strokeWidth={1} dash={[4, 4]} />
+                    </Group>
+                  );
+                })}
+
+                {/* 冻结区域网格线 */}
+                {timelineUnits.map((_, idx) => (
+                  <Line key={`fgl-${idx}`} points={[idx * unitWidth, HEADER_HEIGHT, idx * unitWidth, frozenBottom]} stroke="#f3f4f6" strokeWidth={1} />
+                ))}
+
+                {/* 冻结区域 TODAY 线 */}
+                {isTodayInRange && (
+                  <Line points={[todayX, HEADER_HEIGHT, todayX, frozenBottom]} stroke="#FF3B30" strokeWidth={2} />
+                )}
+
+                {/* 冻结泳道节点 */}
+                {nodes.filter(n => isFrozenSwimlane(n.swimlaneId)).map(renderNode)}
+
+                {/* 底部阴影分隔 */}
+                <Rect x={0} y={frozenBottom} width={totalWidth} height={4} fillLinearGradientStartPoint={{ x: 0, y: 0 }} fillLinearGradientEndPoint={{ x: 0, y: 4 }} fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.12)', 1, 'rgba(0,0,0,0)']} />
+              </Group>
+            );
+          })()}
 
           {/* 需求23：框选矩形 */}
           {isBoxSelecting && boxSelectStart && boxSelectEnd && (
