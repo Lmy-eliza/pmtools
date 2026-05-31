@@ -103,7 +103,7 @@ Agent C（待定，视 HiAgent 排查结果启用）
 |-------|---------|---------|---------|
 | **A** | 消费数据：定义 Schema、开发 plan-generator Skill、生成 ProjectData JSON、画布渲染逻辑 | Claude Code + plan-generator Skill + 飞书 API 读取 | 🔵 进行中：验收 v2 → 对接飞书 API → JSON 生成 |
 | **B** | 供给数据：建表、字段管理、数据迁移、批量更新、表结构维护 | Claude Code + lark-cli base 全套命令 + Node.js 脚本 | ✅ v2 变更完成，待 A/Eliza 分配下一步 |
-| **C** | 待定：可能负责 HiAgent webSDK 集成、前端 UI 优化 | 待定 | ⏸ 暂未启用 |
+| **C** | 对话窗口集成：在 Planner 网页中嵌入 AI 对话面板，使用 Eliza 直接提供的 API，对话生成 ProjectData JSON 后导入画布 | React 19 + TypeScript + Zustand + Tailwind CSS | 🔵 进行中：技术方案已提交，等 A 确认嵌入位置 + Eliza 提供 API |
 
 ### 通信协议
 
@@ -111,7 +111,9 @@ Agent C（待定，视 HiAgent 排查结果启用）
 |------|------|------|
 | `A_to_B.md` | A 发给 B 的需求、反馈、验收 | A 写，B 读 |
 | `B_to_A.md` | B 发给 A 的交付通知、技术细节 | B 写，A 读 |
-| `shared_state.md` | 双方进度同步、已确认决策 | A/B 均可更新 |
+| `A_to_C.md` | A 发给 C 的嵌入位置确认、接口约束 | A 写，C 读 |
+| `C_to_A.md` | C 发给 A 的技术方案、开发进度 | C 写，A 读 |
+| `shared_state.md` | 全局进度同步、已确认决策 | 所有 Agent 可更新 |
 | `PROJECT_BRIEF.md` | 本文件，项目全局对齐 | 任何 Agent 可更新 |
 
 **新 Agent 加入时**：先读 `PROJECT_BRIEF.md`（本文件），再读 `shared_state.md` 了解进度，再读自己相关的通信文件。

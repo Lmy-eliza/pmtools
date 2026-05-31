@@ -1,0 +1,246 @@
+{
+  "id": "b38a0a84-2fb6-440b-b19b-b6db8c82c7d7",
+  "name": "XX项目",
+  "startDate": "2026-03-01T00:00:00.000Z",
+  "endDate": "2027-09-30T00:00:00.000Z",
+  "swimlanes": [
+    {
+      "id": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "name": "软件开发",
+      "order": 0,
+      "isCollapsed": false
+    },
+    {
+      "id": "d8c54afe-a4b9-4014-8887-7eec0fc4c1c8",
+      "name": "硬件开发",
+      "order": 1,
+      "isCollapsed": false
+    },
+    {
+      "id": "224df338-3429-4a20-9312-cc1e55cc7d25",
+      "name": "测试验证",
+      "order": 2,
+      "isCollapsed": false
+    }
+  ],
+  "nodes": [
+    {
+      "type": "pentagon",
+      "name": "G0",
+      "color": "#64D2FF",
+      "x": 186.66666666666666,
+      "y": 120,
+      "date": "2026-04-27T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "7fb9078a-53ea-4766-be44-b2a8b33a91e4"
+    },
+    {
+      "type": "pentagon",
+      "name": "G0",
+      "color": "#64D2FF",
+      "x": 807.3333333333334,
+      "y": 120,
+      "date": "2026-11-03T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "9f771650-f018-449b-afb9-ac4ba4984168"
+    },
+    {
+      "type": "pentagon",
+      "name": "G0",
+      "color": "#64D2FF",
+      "x": 1652.3333333333335,
+      "y": 120,
+      "date": "2027-07-17T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "5a6d74ef-cde4-4e3d-ba0b-d59764e67a2d"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑",
+      "color": "#007AFF",
+      "x": 671,
+      "y": 360,
+      "date": "2026-09-22T00:00:00.000Z",
+      "swimlaneId": "224df338-3429-4a20-9312-cc1e55cc7d25",
+      "id": "f017968c-2891-47db-994d-f3ee0c50ff43"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑",
+      "color": "#007AFF",
+      "x": 850,
+      "y": 240,
+      "date": "2026-11-03T00:00:00.000Z",
+      "swimlaneId": "d8c54afe-a4b9-4014-8887-7eec0fc4c1c8",
+      "id": "41c23dc6-8d28-4e12-8271-27e43beb2ae2"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑",
+      "color": "#007AFF",
+      "x": 1052.6666666666667,
+      "y": 240,
+      "date": "2027-01-17T00:00:00.000Z",
+      "swimlaneId": "d8c54afe-a4b9-4014-8887-7eec0fc4c1c8",
+      "id": "7fb1f044-3e8e-4b4b-ab0c-ab19b618ed94"
+    },
+    {
+      "type": "pentagon",
+      "name": "G0",
+      "color": "#64D2FF",
+      "x": 484.6666666666667,
+      "y": 120,
+      "date": "2026-07-26T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "6aae1807-6fde-4fcc-aac8-4a9df320300c"
+    },
+    {
+      "type": "pentagon",
+      "name": "G0",
+      "color": "#64D2FF",
+      "x": 1209.3333333333335,
+      "y": 120,
+      "date": "2027-03-04T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "16c71f33-56dc-4502-b4ea-a3c19056d156"
+    },
+    {
+      "type": "rectangle",
+      "name": "活动",
+      "color": "#32ADE6",
+      "x": 1192.3333333333333,
+      "y": 360,
+      "date": "2027-01-14T00:00:00.000Z",
+      "swimlaneId": "224df338-3429-4a20-9312-cc1e55cc7d25",
+      "width": 300,
+      "endDate": "2027-04-14T00:00:00.000Z",
+      "id": "6e7bffc5-8308-4bcf-aecf-dcea85a6327d"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑4",
+      "color": "#007AFF",
+      "x": 307,
+      "y": 240,
+      "date": "2026-06-03T00:00:00.000Z",
+      "swimlaneId": "d8c54afe-a4b9-4014-8887-7eec0fc4c1c8",
+      "id": "2cfcf8d0-fd78-44c2-b1fa-f0743d053488"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑5",
+      "color": "#007AFF",
+      "x": 491,
+      "y": 240,
+      "date": "2026-07-28T00:00:00.000Z",
+      "swimlaneId": "d8c54afe-a4b9-4014-8887-7eec0fc4c1c8",
+      "id": "dca9a304-6602-43b3-9c9b-ca7a5d8f3e1e"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑6",
+      "color": "#007AFF",
+      "x": 649,
+      "y": 120,
+      "date": "2026-09-16T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "0dd32cc3-5989-4fc0-b3f4-72fc26d9073a"
+    },
+    {
+      "type": "diamond",
+      "name": "里程碑7",
+      "color": "#007AFF",
+      "x": 846,
+      "y": 360,
+      "date": "2026-11-15T00:00:00.000Z",
+      "swimlaneId": "224df338-3429-4a20-9312-cc1e55cc7d25",
+      "id": "a7922a8d-4ef4-44f9-bbd6-1f4feb9fc4dd"
+    },
+    {
+      "type": "pentagon",
+      "name": "G5",
+      "color": "#64D2FF",
+      "x": 1529,
+      "y": 240,
+      "date": "2027-06-10T00:00:00.000Z",
+      "swimlaneId": "d8c54afe-a4b9-4014-8887-7eec0fc4c1c8",
+      "id": "eaa6d271-bc43-46cc-9cb6-efa1fb4002da"
+    },
+    {
+      "type": "pentagon",
+      "name": "G6",
+      "color": "#64D2FF",
+      "x": 1497,
+      "y": 120,
+      "date": "2027-05-28T00:00:00.000Z",
+      "swimlaneId": "6c256401-fd4a-423a-abc1-193fc900576e",
+      "id": "1ca04785-ea9c-42aa-a19e-c20ae1758f6c"
+    },
+    {
+      "type": "pentagon",
+      "name": "G7",
+      "color": "#64D2FF",
+      "x": 1690,
+      "y": 360,
+      "date": "2027-07-28T00:00:00.000Z",
+      "swimlaneId": "224df338-3429-4a20-9312-cc1e55cc7d25",
+      "id": "36008e70-6b57-4259-a091-9f08c71c0247"
+    }
+  ],
+  "connections": [
+    {
+      "id": "fe15107e-f0d0-4161-9eed-6f5e1c65a4c3",
+      "sourceNodeId": "7fb9078a-53ea-4766-be44-b2a8b33a91e4",
+      "targetNodeId": "f017968c-2891-47db-994d-f3ee0c50ff43",
+      "style": "solid",
+      "isCriticalPath": false
+    },
+    {
+      "id": "1fc69488-1fc2-4582-b004-16d01751f357",
+      "sourceNodeId": "41c23dc6-8d28-4e12-8271-27e43beb2ae2",
+      "targetNodeId": "7fb1f044-3e8e-4b4b-ab0c-ab19b618ed94",
+      "style": "solid",
+      "isCriticalPath": false
+    },
+    {
+      "id": "4f26cc3b-6822-4156-b38f-d743302a8f27",
+      "sourceNodeId": "7fb9078a-53ea-4766-be44-b2a8b33a91e4",
+      "targetNodeId": "6aae1807-6fde-4fcc-aac8-4a9df320300c",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "13cea805-074b-4a96-aa11-313080900613",
+      "sourceNodeId": "6aae1807-6fde-4fcc-aac8-4a9df320300c",
+      "targetNodeId": "41c23dc6-8d28-4e12-8271-27e43beb2ae2",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "3f4d7460-63e6-4039-b028-0b91c1b04e33",
+      "sourceNodeId": "7fb1f044-3e8e-4b4b-ab0c-ab19b618ed94",
+      "targetNodeId": "16c71f33-56dc-4502-b4ea-a3c19056d156",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "071f9827-fb09-4366-ad52-ce59590da3c6",
+      "sourceNodeId": "16c71f33-56dc-4502-b4ea-a3c19056d156",
+      "targetNodeId": "5a6d74ef-cde4-4e3d-ba0b-d59764e67a2d",
+      "style": "solid",
+      "isCriticalPath": true
+    }
+  ],
+  "constraints": [
+    {
+      "id": "9d0789bf-ca60-422a-b12d-a0c4476cd8e4",
+      "sourceNodeId": "9f771650-f018-449b-afb9-ac4ba4984168",
+      "targetNodeId": "41c23dc6-8d28-4e12-8271-27e43beb2ae2",
+      "offsetMonths": 0.292378752886836,
+      "isLocked": false
+    }
+  ],
+  "createdAt": "2026-05-25T12:53:01.805Z",
+  "updatedAt": "2026-05-25T12:53:01.805Z",
+  "schemaVersion": "1.0"
+}

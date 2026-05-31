@@ -34,3 +34,11 @@ dist-ssr
 # mkcert 本地 HTTPS 证书
 certs/
 *.pem
+
+# API Key 文件（严禁提交）
+docs/tmp_api_key_minimax.txt
+docs/Qwen_key.txt
+
+# 临时数据文件
+tmp/
+*.zip

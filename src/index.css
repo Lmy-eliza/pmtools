@@ -271,3 +271,20 @@ body {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* 聊天消息气泡 */
+.chat-message-user {
+  background: var(--accent);
+  color: white;
+  border-radius: 12px 12px 4px 12px;
+  padding: 8px 12px;
+  max-width: 85%;
+}
+
+.chat-message-ai {
+  background: #f0f0f5;
+  color: var(--text-primary);
+  border-radius: 12px 12px 12px 4px;
+  padding: 8px 12px;
+  max-width: 85%;
+}

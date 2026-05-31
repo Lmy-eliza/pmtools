@@ -12,9 +12,9 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ isOpen, onClose }) => {
   const shortcuts = [
     { category: '工具切换', items: [
       { key: 'V', desc: '选择工具' },
-      { key: 'D', desc: '添加菱形节点（里程碑）' },
+      { key: 'D', desc: '添加节点（菱形）' },
       { key: 'T', desc: '添加三角形节点（决策点）' },
-      { key: 'R', desc: '添加长方形节点（活动）' },
+      { key: 'R', desc: '添加活动' },
       { key: 'L', desc: '连线工具' },
     ]},
     { category: '编辑操作', items: [

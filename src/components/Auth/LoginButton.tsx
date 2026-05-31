@@ -6,7 +6,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
-import { LogIn, LogOut, User, ChevronDown } from 'lucide-react';
+import { LogOut, User, ChevronDown } from 'lucide-react';
 
 export const LoginButton: React.FC = () => {
   const { isAuthenticated, user, isLoading, login, logout } = useAuthStore();
@@ -37,11 +37,10 @@ export const LoginButton: React.FC = () => {
     return (
       <button
         onClick={login}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-        title="使用飞书账号登录"
+        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+        title="登录"
       >
-        <LogIn size={16} />
-        <span>飞书登录</span>
+        <User size={18} />
       </button>
     );
   }

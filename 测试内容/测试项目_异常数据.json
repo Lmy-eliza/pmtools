@@ -1,0 +1,84 @@
+{
+  "id": "",
+  "name": "",
+  "startDate": "not-a-date",
+  "endDate": "2024-13-99T00:00:00.000Z",
+  "swimlanes": [
+    {
+      "id": "sl-only",
+      "name": "",
+      "order": -1,
+      "isCollapsed": "yes"
+    },
+    {
+      "name": "缺少id的泳道",
+      "order": 0
+    }
+  ],
+  "nodes": [
+    {
+      "type": "nonexistent-shape",
+      "name": "",
+      "color": "not-a-color",
+      "x": null,
+      "y": -999,
+      "date": "invalid-date",
+      "swimlaneId": "sl-does-not-exist",
+      "id": "node-broken-1"
+    },
+    {
+      "type": "diamond",
+      "name": "缺少坐标和日期",
+      "color": "#007AFF",
+      "swimlaneId": "sl-only",
+      "id": "node-broken-2"
+    },
+    {
+      "type": "rectangle",
+      "name": "结束早于开始",
+      "color": "#FF3B30",
+      "x": 100,
+      "y": 100,
+      "date": "2026-06-01T00:00:00.000Z",
+      "endDate": "2025-01-01T00:00:00.000Z",
+      "swimlaneId": "sl-only",
+      "width": -200,
+      "id": "node-broken-3"
+    },
+    {
+      "id": "node-broken-4"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-bad-1",
+      "sourceNodeId": "node-does-not-exist",
+      "targetNodeId": "node-also-missing",
+      "style": "dotted",
+      "isCriticalPath": "maybe"
+    },
+    {
+      "id": "conn-bad-2",
+      "sourceNodeId": "node-broken-1",
+      "targetNodeId": "node-broken-1",
+      "style": "solid",
+      "isCriticalPath": false
+    },
+    {
+      "sourceNodeId": "node-broken-2"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "constraint-bad",
+      "sourceNodeId": "ghost-node",
+      "targetNodeId": "another-ghost",
+      "offsetMonths": "abc",
+      "isLocked": 42
+    }
+  ],
+  "createdAt": "nope",
+  "updatedAt": null,
+  "schemaVersion": "99.0",
+  "extraField": "不该存在的字段"
+}

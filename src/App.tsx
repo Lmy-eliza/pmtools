@@ -11,6 +11,7 @@ import { ProjectSettingsPanel } from './components/Panels/ProjectSettingsPanel';
 import { ConstraintPanel } from './components/Panels/ConstraintPanel';
 import { ConnectionPanel } from './components/Panels/ConnectionPanel';
 import { VersionHistoryPanel } from './components/Panels/VersionHistoryPanel';
+import { ChatPanel } from './components/Chat/ChatPanel';
 import { exportToDrawio, downloadFile } from './utils/exportUtils';
 import { StatsBar } from './components/StatsBar';
 import { importFromJSON, validateProjectJSON, saveProject, saveVersion, listVersions, deleteVersion, exportToJSON } from './utils/storage';
@@ -34,7 +35,11 @@ function App() {
   const [currentRecordId, setCurrentRecordId] = useState<string | undefined>();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
+  const [showChat, setShowChat] = useState(false);
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // URL 参数控制 Demo 模式：?mode=hiagent 隐藏 ChatPanel，?mode=chatpanel 隐藏 HiAgent
+  const demoMode = new URLSearchParams(window.location.search).get('mode');
 
   // 飞书认证状态
   const { initialize: initAuth, handleCallback: handleAuthCallback } = useAuthStore();
@@ -393,6 +398,37 @@ function App() {
     setCurrentRecordId(recordId);
   };
 
+  // 统一导入入口：文件导入、粘贴导入、AI 对话导入共用
+  const applyImportedProject = (data: ProjectData, newId?: string) => {
+    const id = newId || data.id || uuidv4();
+    useCanvasStore.setState({
+      projectName: data.name || '导入的项目',
+      startDate: data.startDate,
+      endDate: data.endDate,
+      swimlanes: data.swimlanes,
+      nodes: data.nodes,
+      connections: data.connections || [],
+      constraints: data.constraints || [],
+      selectedNodeIds: [],
+      selectedConnectionIds: [],
+      history: [],
+      historyIndex: -1,
+    });
+    setCurrentProjectId(id);
+    setCurrentRecordId(undefined);
+  };
+
+  // AI 对话导入回调
+  const handleChatImport = (jsonString: string) => {
+    try {
+      const data = importFromJSON(jsonString);
+      applyImportedProject(data, uuidv4());
+      showToastMessage('计划已导入画布', 'success');
+    } catch (err) {
+      showToastMessage(err instanceof Error ? err.message : '导入失败', 'error');
+    }
+  };
+
   // 导出DrawIO - 问题15修复：确保使用最新的store状态
   const handleExportDrawio = () => {
     const state = useCanvasStore.getState();
@@ -448,19 +484,7 @@ function App() {
     try {
       const content = await file.text();
       const data = importFromJSON(content);
-
-      // 更新store
-      useCanvasStore.setState({
-        projectName: data.name,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        swimlanes: data.swimlanes,
-        nodes: data.nodes,
-        connections: data.connections,
-        constraints: data.constraints,
-      });
-      setCurrentProjectId(data.id);
-
+      applyImportedProject(data);
       showToastMessage('导入成功', 'success');
     } catch (error) {
       console.error('导入失败:', error);
@@ -795,20 +819,7 @@ function App() {
         return;
       }
       const data = importFromJSON(pasteJsonText);
-      const newId = uuidv4();
-      useCanvasStore.setState({
-        projectName: data.name || '导入的项目',
-        startDate: data.startDate,
-        endDate: data.endDate,
-        swimlanes: data.swimlanes,
-        nodes: data.nodes,
-        connections: data.connections || [],
-        constraints: data.constraints || [],
-        selectedNodeIds: [],
-        history: [],
-        historyIndex: -1,
-      });
-      setCurrentProjectId(newId);
+      applyImportedProject(data, uuidv4());
       setShowPasteDialog(false);
       setPasteJsonText('');
       showToastMessage('项目导入成功', 'success');
@@ -833,6 +844,8 @@ function App() {
         onOpenVersionHistory={() => setShowVersionHistory(!showVersionHistory)}
         onOpenConnectionPanel={() => setShowConnectionPanel(!showConnectionPanel)}
         onPasteJSON={handleOpenPasteDialog}
+        onToggleChat={demoMode === 'hiagent' ? undefined : () => setShowChat(!showChat)}
+        showChat={showChat}
         showConstraintPanel={showConstraintPanel}
         showVersionHistory={showVersionHistory}
         showConnectionPanel={showConnectionPanel}
@@ -850,8 +863,12 @@ function App() {
           onConstraintNodeSelect={handleConstraintNodeSelect}
         />
 
-        {/* 属性面板 */}
-        <NodePropertyPanel />
+        {/* AI 对话面板 / 属性面板（互斥） */}
+        {showChat ? (
+          <ChatPanel onImportJSON={handleChatImport} onClose={() => setShowChat(false)} />
+        ) : (
+          <NodePropertyPanel />
+        )}
 
         {/* 问题10：连线清单面板 */}
         <ConnectionPanel
@@ -879,7 +896,7 @@ function App() {
       {/* 状态栏 */}
       <div className="h-6 bg-white border-t border-gray-200 flex items-center px-4 text-xs text-gray-500">
         <span className="mr-4">
-          工具: {currentTool === 'select' ? '选择' : currentTool === 'diamond' ? '菱形' : currentTool === 'triangle' ? '三角形' : currentTool === 'rectangle' ? '长方形' : currentTool === 'pentagon' ? '阀门' : currentTool === 'connection' ? '连线' : currentTool}
+          工具: {currentTool === 'select' ? '选择' : currentTool === 'diamond' ? '节点' : currentTool === 'triangle' ? '三角形' : currentTool === 'rectangle' ? '活动' : currentTool === 'pentagon' ? '里程碑' : currentTool === 'connection' ? '连线' : currentTool}
         </span>
         <span className="mr-4">节点: {nodes.length}</span>
         <span className="mr-4">连接: {connections.length}</span>

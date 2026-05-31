@@ -1,0 +1,266 @@
+{
+  "id": "test-import-001",
+  "name": "智能座舱2.0项目",
+  "startDate": "2025-01-01T00:00:00.000Z",
+  "endDate": "2026-12-31T00:00:00.000Z",
+  "swimlanes": [
+    {
+      "id": "sl-product",
+      "name": "产品设计",
+      "order": 0,
+      "isCollapsed": false
+    },
+    {
+      "id": "sl-dev",
+      "name": "研发实施",
+      "order": 1,
+      "isCollapsed": false
+    },
+    {
+      "id": "sl-test",
+      "name": "测试验收",
+      "order": 2,
+      "isCollapsed": false
+    }
+  ],
+  "nodes": [
+    {
+      "type": "pentagon",
+      "name": "G0 立项",
+      "color": "#64D2FF",
+      "x": 100,
+      "y": 120,
+      "date": "2025-01-15T00:00:00.000Z",
+      "swimlaneId": "sl-product",
+      "id": "node-g0"
+    },
+    {
+      "type": "diamond",
+      "name": "需求评审完成",
+      "color": "#007AFF",
+      "x": 250,
+      "y": 120,
+      "date": "2025-03-20T00:00:00.000Z",
+      "swimlaneId": "sl-product",
+      "id": "node-req-review"
+    },
+    {
+      "type": "rectangle",
+      "name": "UI/UX设计",
+      "color": "#AF52DE",
+      "x": 300,
+      "y": 120,
+      "date": "2025-04-01T00:00:00.000Z",
+      "swimlaneId": "sl-product",
+      "width": 250,
+      "endDate": "2025-06-30T00:00:00.000Z",
+      "id": "node-ux-design"
+    },
+    {
+      "type": "pentagon",
+      "name": "G1 方案确认",
+      "color": "#64D2FF",
+      "x": 400,
+      "y": 240,
+      "date": "2025-05-15T00:00:00.000Z",
+      "swimlaneId": "sl-dev",
+      "id": "node-g1"
+    },
+    {
+      "type": "rectangle",
+      "name": "后端开发",
+      "color": "#32ADE6",
+      "x": 450,
+      "y": 240,
+      "date": "2025-06-01T00:00:00.000Z",
+      "swimlaneId": "sl-dev",
+      "width": 400,
+      "endDate": "2025-12-31T00:00:00.000Z",
+      "id": "node-backend"
+    },
+    {
+      "type": "rectangle",
+      "name": "前端开发",
+      "color": "#30D158",
+      "x": 500,
+      "y": 240,
+      "date": "2025-07-01T00:00:00.000Z",
+      "swimlaneId": "sl-dev",
+      "width": 350,
+      "endDate": "2026-01-31T00:00:00.000Z",
+      "id": "node-frontend"
+    },
+    {
+      "type": "diamond",
+      "name": "Alpha版本",
+      "color": "#FF9500",
+      "x": 700,
+      "y": 240,
+      "date": "2025-10-15T00:00:00.000Z",
+      "swimlaneId": "sl-dev",
+      "id": "node-alpha"
+    },
+    {
+      "type": "pentagon",
+      "name": "G2 开发完成",
+      "color": "#64D2FF",
+      "x": 850,
+      "y": 240,
+      "date": "2026-02-01T00:00:00.000Z",
+      "swimlaneId": "sl-dev",
+      "id": "node-g2"
+    },
+    {
+      "type": "rectangle",
+      "name": "集成测试",
+      "color": "#FF3B30",
+      "x": 900,
+      "y": 360,
+      "date": "2026-02-15T00:00:00.000Z",
+      "swimlaneId": "sl-test",
+      "width": 300,
+      "endDate": "2026-05-31T00:00:00.000Z",
+      "id": "node-integration-test"
+    },
+    {
+      "type": "diamond",
+      "name": "Beta版本",
+      "color": "#FF9500",
+      "x": 1050,
+      "y": 360,
+      "date": "2026-06-15T00:00:00.000Z",
+      "swimlaneId": "sl-test",
+      "id": "node-beta"
+    },
+    {
+      "type": "rectangle",
+      "name": "用户验收测试",
+      "color": "#FF6961",
+      "x": 1100,
+      "y": 360,
+      "date": "2026-07-01T00:00:00.000Z",
+      "swimlaneId": "sl-test",
+      "width": 200,
+      "endDate": "2026-09-30T00:00:00.000Z",
+      "id": "node-uat"
+    },
+    {
+      "type": "pentagon",
+      "name": "G3 验收通过",
+      "color": "#64D2FF",
+      "x": 1250,
+      "y": 360,
+      "date": "2026-10-15T00:00:00.000Z",
+      "swimlaneId": "sl-test",
+      "id": "node-g3"
+    },
+    {
+      "type": "pentagon",
+      "name": "G4 正式发布",
+      "color": "#34C759",
+      "x": 1400,
+      "y": 120,
+      "date": "2026-12-01T00:00:00.000Z",
+      "swimlaneId": "sl-product",
+      "id": "node-g4"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn-01",
+      "sourceNodeId": "node-g0",
+      "targetNodeId": "node-req-review",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-02",
+      "sourceNodeId": "node-req-review",
+      "targetNodeId": "node-ux-design",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-03",
+      "sourceNodeId": "node-req-review",
+      "targetNodeId": "node-g1",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-04",
+      "sourceNodeId": "node-g1",
+      "targetNodeId": "node-backend",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-05",
+      "sourceNodeId": "node-g1",
+      "targetNodeId": "node-frontend",
+      "style": "solid",
+      "isCriticalPath": false
+    },
+    {
+      "id": "conn-06",
+      "sourceNodeId": "node-backend",
+      "targetNodeId": "node-alpha",
+      "style": "dashed",
+      "isCriticalPath": false
+    },
+    {
+      "id": "conn-07",
+      "sourceNodeId": "node-frontend",
+      "targetNodeId": "node-g2",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-08",
+      "sourceNodeId": "node-g2",
+      "targetNodeId": "node-integration-test",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-09",
+      "sourceNodeId": "node-integration-test",
+      "targetNodeId": "node-beta",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-10",
+      "sourceNodeId": "node-beta",
+      "targetNodeId": "node-uat",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-11",
+      "sourceNodeId": "node-uat",
+      "targetNodeId": "node-g3",
+      "style": "solid",
+      "isCriticalPath": true
+    },
+    {
+      "id": "conn-12",
+      "sourceNodeId": "node-g3",
+      "targetNodeId": "node-g4",
+      "style": "solid",
+      "isCriticalPath": true
+    }
+  ],
+  "constraints": [
+    {
+      "id": "constraint-01",
+      "sourceNodeId": "node-alpha",
+      "targetNodeId": "node-g2",
+      "offsetMonths": 0.5,
+      "isLocked": false
+    }
+  ],
+  "createdAt": "2025-01-01T00:00:00.000Z",
+  "updatedAt": "2025-01-01T00:00:00.000Z",
+  "schemaVersion": "1.0"
+}

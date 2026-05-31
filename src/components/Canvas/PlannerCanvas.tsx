@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Rect, Line, Text, Group } from 'react-konva';
 import { useCanvasStore } from '../../stores/canvasStore';
-import { xToDate, formatDate, formatShortDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
+import { xToDate, formatDate, ensureDateOrder, dateToX, generateTimelineUnits, formatTimelineUnit, getUnitWidth } from '../../utils/dateUtils';
 import { DiamondNode } from '../Nodes/DiamondNode';
 import { TriangleNode } from '../Nodes/TriangleNode';
 import { RectangleNode } from '../Nodes/RectangleNode';
@@ -37,7 +37,6 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
   ({ isConstraintSelectMode = false, onConstraintNodeSelect }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const swimlaneListRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [dragTooltip, setDragTooltip] = useState<{ x: number; y: number; date: string } | null>(null);
@@ -50,10 +49,9 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
   const [isBoxSelecting, setIsBoxSelecting] = useState(false);
   const [boxSelectStart, setBoxSelectStart] = useState<{ x: number; y: number } | null>(null);
   const [boxSelectEnd, setBoxSelectEnd] = useState<{ x: number; y: number } | null>(null);
-  // 需求3C：悬停信息卡
-  const [hoverTooltip, setHoverTooltip] = useState<{ x: number; y: number; node: PlanNode } | null>(null);
-  // 泳道冻结：追踪垂直滚动位置
-  const [scrollY, setScrollY] = useState(0);
+  // 泳道冻结：追踪垂直滚动位置（纯 ref，不触发 React re-render）
+  const scrollYRef = useRef(0);
+  const frozenGroupRef = useRef<any>(null);
 
   const {
     projectName,
@@ -123,13 +121,16 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
 
   // 同步左侧泳道列表的垂直滚动 + 追踪滚动位置
   const handleCanvasScroll = () => {
-    if (canvasContainerRef.current) {
-      if (swimlaneListRef.current) {
-        // 冻结行已从 sidebar 列表中移除，需要减去冻结区域高度
-        const frozenH = frozenSwimlaneCount > 0 ? frozenAreaHeight * settings.zoom : 0;
-        swimlaneListRef.current.scrollTop = Math.max(0, canvasContainerRef.current.scrollTop - frozenH);
-      }
-      setScrollY(canvasContainerRef.current.scrollTop);
+    if (!canvasContainerRef.current) return;
+    const newScrollY = canvasContainerRef.current.scrollTop;
+    scrollYRef.current = newScrollY;
+
+    // 命令式移动覆盖层（不走 React state，零 re-render）
+    if (frozenGroupRef.current) {
+      const logicalY = newScrollY / settings.zoom;
+      frozenGroupRef.current.y(logicalY);
+      frozenGroupRef.current.visible(newScrollY > 0);
+      frozenGroupRef.current.getLayer()?.batchDraw();
     }
   };
 
@@ -156,10 +157,43 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
     return h;
   }, [frozenSwimlaneCount, swimlanes, layout.swimlaneHeights, settings.swimlaneHeight]);
 
-  const isFrozenSwimlane = (swimlaneId: string) => {
-    const idx = swimlanes.findIndex(s => s.id === swimlaneId);
-    return idx >= 0 && idx < frozenSwimlaneCount;
-  };
+  const frozenSwimlaneIds = useMemo(
+    () => new Set(swimlanes.slice(0, frozenSwimlaneCount).map(s => s.id)),
+    [swimlanes, frozenSwimlaneCount]
+  );
+
+  const isFrozenSwimlane = (swimlaneId: string) => frozenSwimlaneIds.has(swimlaneId);
+
+  const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
+  const selectedConnectionIdSet = useMemo(() => new Set(selectedConnectionIds), [selectedConnectionIds]);
+
+  const swimlaneStatsById = useMemo(() => {
+    const map = new Map<string, { total: number; done: number; active: number; delayed: number }>();
+    for (const sl of swimlanes) {
+      map.set(sl.id, { total: 0, done: 0, active: 0, delayed: 0 });
+    }
+    for (const node of nodes) {
+      const stats = map.get(node.swimlaneId);
+      if (!stats) continue;
+      stats.total += 1;
+      if (node.status === 'completed') stats.done += 1;
+      else if (node.status === 'delayed') stats.delayed += 1;
+      else stats.active += 1;
+    }
+    return map;
+  }, [nodes, swimlanes]);
+
+  const calculatedNodeById = useMemo(() => {
+    const map = new Map<string, PlanNode>();
+    for (const node of nodes) {
+      const layoutY = layout.nodeYPositions.get(node.id) ?? node.y;
+      const calculatedX = node.type === 'rectangle'
+        ? dateToX(node.date, startDate, unitWidth, 0, timelineView) + (node.width || 100) / 2
+        : dateToX(node.date, startDate, unitWidth, 0, timelineView);
+      map.set(node.id, { ...node, x: calculatedX, y: layoutY });
+    }
+    return map;
+  }, [nodes, layout, startDate, unitWidth, timelineView]);
 
   // 📌 点击处理
   const handlePinClick = (swimlaneIndex: number) => {
@@ -465,20 +499,10 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
 
   // 渲染节点 - 动态计算X坐标以支持时间轴视图切换
   const renderNode = (node: PlanNode) => {
-    const isSelected = selectedNodeIds.includes(node.id);
+    const isSelected = selectedNodeIdSet.has(node.id);
     const isConnectionStart = connectionStart === node.id;
 
-    // 动态计算X坐标（日期→像素）和Y坐标（布局引擎避障）
-    const layoutY = layout.nodeYPositions.get(node.id) ?? node.y;
-    let nodeWithCalculatedPos: PlanNode;
-    if (node.type === 'rectangle') {
-      const leftEdgeX = dateToX(node.date, startDate, unitWidth, 0, timelineView);
-      const calculatedX = leftEdgeX + (node.width || 100) / 2;
-      nodeWithCalculatedPos = { ...node, x: calculatedX, y: layoutY };
-    } else {
-      const calculatedX = dateToX(node.date, startDate, unitWidth, 0, timelineView);
-      nodeWithCalculatedPos = { ...node, x: calculatedX, y: layoutY };
-    }
+    const nodeWithCalculatedPos = calculatedNodeById.get(node.id) ?? node;
 
     const commonProps = {
       key: node.id,
@@ -560,169 +584,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
   };
 
   return (
-    <div ref={containerRef} className="flex-1 flex overflow-hidden bg-white relative planner-canvas-container">
-      {/* 左侧固定列 - 问题7修复 */}
-      <div className="flex-shrink-0 bg-gray-50 overflow-hidden flex flex-col z-20 border-r border-gray-200"
-           style={{ width: leftPanelWidth }}>
-        {/* 项目名称区域 - 问题4修复：minHeight改为height，确保缩放同步 */}
-        <div
-          className="border-b border-gray-200 flex items-start justify-center overflow-hidden"
-          style={{ height: HEADER_HEIGHT * settings.zoom, padding: '4px 0' }}
-        >
-          <div
-            className="w-full mx-2 flex items-center justify-center relative"
-          >
-            <textarea
-              value={projectName}
-              maxLength={MAX_NAME_LENGTH}
-              onChange={(e) => {
-                setProjectName(e.target.value);
-                // 自动调整高度
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = target.scrollHeight + 'px';
-              }}
-              onInput={(e) => {
-                // 自动调整高度
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = target.scrollHeight + 'px';
-              }}
-              ref={(el) => {
-                // 初始化时调整高度
-                if (el) {
-                  el.style.height = 'auto';
-                  el.style.height = el.scrollHeight + 'px';
-                }
-              }}
-              className="editable-text text-sm font-semibold text-center w-full resize-none overflow-hidden"
-              style={{
-                lineHeight: '1.4',
-                wordBreak: 'break-all',
-                whiteSpace: 'pre-wrap',
-                fontSize: projectName.length > 20 ? '12px' : '14px',
-              }}
-              placeholder="项目名称"
-              rows={1}
-            />
-            {/* 字数提示 */}
-            {projectName.length >= MAX_NAME_LENGTH && (
-              <div className="absolute -bottom-4 left-0 right-0 text-xs text-red-500 text-center">
-                已达上限 {MAX_NAME_LENGTH} 字
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 冻结泳道标签（不随滚动） */}
-        {frozenSwimlaneCount > 0 && (
-          <div className="flex-shrink-0 border-b-2 border-gray-300 shadow-sm">
-            {swimlanes.slice(0, frozenSwimlaneCount).map((swimlane, i) => {
-              const slH = (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) * settings.zoom;
-              return (
-                <div
-                  key={swimlane.id}
-                  className="group relative flex flex-col border-b border-gray-200 px-1 bg-blue-50/30"
-                  style={{ height: slH, minHeight: slH }}
-                >
-                  <div className="flex items-center flex-1">
-                    <GripVertical size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400" />
-                    <div className="relative flex-1 min-w-0">
-                      <textarea
-                        value={swimlane.name}
-                        maxLength={MAX_NAME_LENGTH}
-                        onChange={(e) => {
-                          updateSwimlane(swimlane.id, { name: e.target.value });
-                          const target = e.target as HTMLTextAreaElement;
-                          target.style.height = 'auto';
-                          target.style.height = Math.min(target.scrollHeight, slH - 20) + 'px';
-                        }}
-                        className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
-                        style={{ lineHeight: '1.3', wordBreak: 'break-all', fontSize: swimlane.name.length > 15 ? '12px' : '14px' }}
-                        placeholder="泳道名称"
-                        rows={1}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handlePinClick(i)}
-                    className="absolute top-1 right-1 text-blue-500 p-0.5"
-                    title="取消冻结"
-                  >
-                    <Pin size={12} className="fill-blue-500" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 泳道名称列表 - 与右侧画布同步垂直滚动 */}
-        <div
-          ref={swimlaneListRef}
-          className="flex-1 overflow-hidden"
-        >
-          {swimlanes.map((swimlane, globalIndex) => {
-            if (globalIndex < frozenSwimlaneCount) return null;
-            const slH = (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) * settings.zoom;
-            return (
-              <div
-                key={swimlane.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, swimlane.id)}
-                onDragOver={(e) => handleDragOver(e, swimlane.id)}
-                onDragEnd={handleDragEnd}
-                className={`group relative flex flex-col border-b border-gray-200 px-1 transition-colors ${
-                  dragOverSwimlane === swimlane.id ? 'bg-blue-50' : ''
-                } ${draggedSwimlane === swimlane.id ? 'opacity-50' : ''}`}
-                style={{ height: slH, minHeight: slH }}
-              >
-                <div className="flex items-center flex-1">
-                  <GripVertical size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400" />
-                  <div className="relative flex-1 min-w-0">
-                    <textarea
-                      value={swimlane.name}
-                      maxLength={MAX_NAME_LENGTH}
-                      onChange={(e) => {
-                        updateSwimlane(swimlane.id, { name: e.target.value });
-                        const target = e.target as HTMLTextAreaElement;
-                        target.style.height = 'auto';
-                        target.style.height = Math.min(target.scrollHeight, slH - 20) + 'px';
-                      }}
-                      className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
-                      style={{ lineHeight: '1.3', wordBreak: 'break-all', fontSize: swimlane.name.length > 15 ? '12px' : '14px' }}
-                      placeholder="泳道名称"
-                      rows={1}
-                    />
-                    {swimlane.name.length >= MAX_NAME_LENGTH && (
-                      <div className="absolute -bottom-3 left-0 right-0 text-xs text-red-500 text-center">已达上限</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 📌 图标 — hover 显示 */}
-                <button
-                  onClick={() => handlePinClick(globalIndex)}
-                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-gray-400 hover:text-blue-500 p-0.5"
-                  title="冻结到此行"
-                >
-                  <Pin size={12} />
-                </button>
-
-                <button
-                  onClick={() => handleDeleteSwimlane(swimlane.id)}
-                  className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-1"
-                  title="删除泳道"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 需求15：拖拽调整宽度的分隔条 - 使用绝对定位避免间隙 */}
+    <div ref={containerRef} className="flex-1 overflow-hidden bg-white relative planner-canvas-container">
+      {/* 需求15：拖拽调整宽度的分隔条 */}
       <div
         className={`absolute w-2 bg-transparent hover:bg-blue-400 cursor-col-resize z-30 transition-colors ${isResizingPanel ? 'bg-blue-500' : ''}`}
         style={{ left: leftPanelWidth - 4, top: 0, bottom: 0 }}
@@ -730,12 +593,218 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
         title="拖拽调整宽度"
       />
 
-      {/* 右侧可滚动画布区域 */}
+      {/* 方案D：单一滚动容器 — 左侧 rail + 右侧 Stage 共享同一个 scrollTop/scrollLeft */}
       <div
         ref={canvasContainerRef}
-        className="flex-1 overflow-auto relative"
+        className="w-full h-full overflow-auto"
         onScroll={handleCanvasScroll}
       >
+        <div style={{ display: 'inline-flex', alignItems: 'stretch', minWidth: '100%' }}>
+          {/* 左侧 sticky rail — 水平滚动时固定在左侧 */}
+          <div
+            style={{
+              position: 'sticky',
+              left: 0,
+              zIndex: 20,
+              width: leftPanelWidth,
+              minWidth: leftPanelWidth,
+              flexShrink: 0,
+              background: '#f9fafb',
+              borderRight: '1px solid #e5e7eb',
+            }}
+          >
+            {/* 项目名称 — sticky top: 垂直滚动时固定在顶部 */}
+            <div
+              className="border-b border-gray-200 flex items-start justify-center overflow-hidden"
+              style={{
+                height: HEADER_HEIGHT * settings.zoom,
+                padding: '4px 0',
+                position: 'sticky',
+                top: 0,
+                zIndex: 22,
+                background: '#f9fafb',
+              }}
+            >
+              <div className="w-full mx-2 flex items-center justify-center relative">
+                <textarea
+                  value={projectName}
+                  maxLength={MAX_NAME_LENGTH}
+                  onChange={(e) => {
+                    setProjectName(e.target.value);
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = target.scrollHeight + 'px';
+                  }}
+                  ref={(el) => {
+                    if (el) {
+                      el.style.height = 'auto';
+                      el.style.height = el.scrollHeight + 'px';
+                    }
+                  }}
+                  className="editable-text text-sm font-semibold text-center w-full resize-none overflow-hidden"
+                  style={{
+                    lineHeight: '1.4',
+                    wordBreak: 'break-all',
+                    whiteSpace: 'pre-wrap',
+                    fontSize: projectName.length > 20 ? '12px' : '14px',
+                  }}
+                  placeholder="项目名称"
+                  rows={1}
+                />
+                {projectName.length >= MAX_NAME_LENGTH && (
+                  <div className="absolute -bottom-4 left-0 right-0 text-xs text-red-500 text-center">
+                    已达上限 {MAX_NAME_LENGTH} 字
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 冻结泳道标签 — sticky top: 垂直滚动时固定在 header 下方 */}
+            {frozenSwimlaneCount > 0 && (
+              <div
+                style={{
+                  position: 'sticky',
+                  top: HEADER_HEIGHT * settings.zoom,
+                  zIndex: 21,
+                  background: '#f9fafb',
+                  borderBottom: '2px solid #d1d5db',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                }}
+              >
+                {swimlanes.slice(0, frozenSwimlaneCount).map((swimlane, i) => {
+                  const slH = (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) * settings.zoom;
+                  return (
+                    <div
+                      key={swimlane.id}
+                      className="group relative flex flex-col border-b border-gray-200 px-1 bg-blue-50/30"
+                      style={{ height: slH, minHeight: slH }}
+                    >
+                      <div className="flex flex-col items-center flex-1 justify-center">
+                        <div className="flex items-center w-full">
+                          <GripVertical size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400" />
+                          <div className="relative flex-1 min-w-0">
+                            <textarea
+                              value={swimlane.name}
+                              maxLength={MAX_NAME_LENGTH}
+                              onChange={(e) => {
+                                updateSwimlane(swimlane.id, { name: e.target.value });
+                                const target = e.target as HTMLTextAreaElement;
+                                target.style.height = 'auto';
+                                target.style.height = Math.min(target.scrollHeight, slH - 20) + 'px';
+                              }}
+                              className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
+                              style={{ lineHeight: '1.3', wordBreak: 'break-all', fontSize: swimlane.name.length > 15 ? '12px' : '14px' }}
+                              placeholder="泳道名称"
+                              rows={1}
+                            />
+                          </div>
+                        </div>
+                        {(() => {
+                          const stats = swimlaneStatsById.get(swimlane.id);
+                          if (!stats) return null;
+                          const { done, active, delayed } = stats;
+                          return (
+                            <div className="flex items-center justify-center gap-1.5 text-[10px] mt-0.5 leading-tight">
+                              <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /><span className="text-gray-600">{done}</span></span>
+                              <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /><span className="text-gray-600">{active}</span></span>
+                              <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /><span className="text-gray-600">{delayed}</span></span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <button
+                        onClick={() => handlePinClick(i)}
+                        className="absolute top-1 right-1 text-blue-500 p-0.5"
+                        title="取消冻结"
+                      >
+                        <Pin size={12} className="fill-blue-500" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 泳道名称列表 — 与右侧 Konva 泳道天然同源滚动 */}
+            {swimlanes.map((swimlane, globalIndex) => {
+              if (globalIndex < frozenSwimlaneCount) return null;
+              const slH = (layout.swimlaneHeights.get(swimlane.id) ?? settings.swimlaneHeight) * settings.zoom;
+              return (
+                <div
+                  key={swimlane.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, swimlane.id)}
+                  onDragOver={(e) => handleDragOver(e, swimlane.id)}
+                  onDragEnd={handleDragEnd}
+                  className={`group relative flex flex-col border-b border-gray-200 px-1 transition-colors ${
+                    dragOverSwimlane === swimlane.id ? 'bg-blue-50' : ''
+                  } ${draggedSwimlane === swimlane.id ? 'opacity-50' : ''}`}
+                  style={{ height: slH, minHeight: slH }}
+                >
+                  <div className="flex flex-col items-center flex-1 justify-center">
+                    <div className="flex items-center w-full">
+                      <GripVertical size={14} className="flex-shrink-0 opacity-0 group-hover:opacity-50 cursor-grab mr-1 text-gray-400" />
+                      <div className="relative flex-1 min-w-0">
+                        <textarea
+                          value={swimlane.name}
+                          maxLength={MAX_NAME_LENGTH}
+                          onChange={(e) => {
+                            updateSwimlane(swimlane.id, { name: e.target.value });
+                            const target = e.target as HTMLTextAreaElement;
+                            target.style.height = 'auto';
+                            target.style.height = Math.min(target.scrollHeight, slH - 20) + 'px';
+                          }}
+                          className="editable-text text-sm text-center w-full resize-none overflow-hidden min-w-0"
+                          style={{ lineHeight: '1.3', wordBreak: 'break-all', fontSize: swimlane.name.length > 15 ? '12px' : '14px' }}
+                          placeholder="泳道名称"
+                          rows={1}
+                        />
+                        {swimlane.name.length >= MAX_NAME_LENGTH && (
+                          <div className="absolute -bottom-3 left-0 right-0 text-xs text-red-500 text-center">已达上限</div>
+                        )}
+                      </div>
+                    </div>
+                    {(() => {
+                      const stats = swimlaneStatsById.get(swimlane.id);
+                      if (!stats) return null;
+                      const { done, active, delayed } = stats;
+                      return (
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] mt-0.5 leading-tight">
+                          <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /><span className="text-gray-600">{done}</span></span>
+                          <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /><span className="text-gray-600">{active}</span></span>
+                          <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /><span className="text-gray-600">{delayed}</span></span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <button
+                    onClick={() => handlePinClick(globalIndex)}
+                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-gray-400 hover:text-blue-500 p-0.5"
+                    title="冻结到此行"
+                  >
+                    <Pin size={12} />
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteSwimlane(swimlane.id)}
+                    className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-1"
+                    title="删除泳道"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Konva 画布 — Stage 区域 */}
+          <div style={{ flexShrink: 0 }}>
         {/* Konva 画布 */}
         <Stage
           ref={stageRef}
@@ -751,25 +820,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
               setBoxSelectEnd({ x: pos.x / settings.zoom, y: pos.y / settings.zoom });
             }
 
-            // 需求3C：悬停信息卡
-            if (!pos) { setHoverTooltip(null); return; }
-            const scaledPos = { x: pos.x / settings.zoom, y: pos.y / settings.zoom };
-            const hoveredNode = nodes.find(node => {
-              const calcX = node.type === 'rectangle'
-                ? dateToX(node.date, startDate, unitWidth, 0, timelineView) + (node.width || 100) / 2
-                : dateToX(node.date, startDate, unitWidth, 0, timelineView);
-              const nodeW = node.width || (node.type === 'rectangle' ? 100 : 40);
-              const nodeH = node.type === 'rectangle' ? 32 : 40;
-              return scaledPos.x >= calcX - nodeW / 2 && scaledPos.x <= calcX + nodeW / 2
-                && scaledPos.y >= node.y - nodeH / 2 && scaledPos.y <= node.y + nodeH / 2;
-            });
-            if (hoveredNode) {
-              setHoverTooltip({ x: pos.x + leftPanelWidth, y: pos.y, node: hoveredNode });
-            } else {
-              setHoverTooltip(null);
-            }
           }}
-          onMouseLeave={() => setHoverTooltip(null)}
+          onMouseLeave={() => {}}
           onMouseDown={(e) => {
             // 需求23：框选开始
             if (currentTool === 'select') {
@@ -1006,64 +1058,40 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
             );
           })}
 
-          {/* 连接线 - 使用动态计算的节点坐标（Stage内部x从0开始） */}
+          {/* 连接线 - 使用预计算的节点坐标 */}
           {connections.map((conn, index) => {
-            const sourceNode = nodes.find((n) => n.id === conn.sourceNodeId);
-            const targetNode = nodes.find((n) => n.id === conn.targetNodeId);
+            const sourceNode = calculatedNodeById.get(conn.sourceNodeId);
+            const targetNode = calculatedNodeById.get(conn.targetNodeId);
             if (!sourceNode || !targetNode) return null;
-
-            // 动态计算节点X坐标（修复：长方形节点使用中心点坐标）
-            let sourceX = dateToX(sourceNode.date, startDate, unitWidth, 0, timelineView);
-            if (sourceNode.type === 'rectangle') {
-              sourceX += (sourceNode.width || 100) / 2;  // 加上宽度的一半得到中心点
-            }
-
-            let targetX = dateToX(targetNode.date, startDate, unitWidth, 0, timelineView);
-            if (targetNode.type === 'rectangle') {
-              targetX += (targetNode.width || 100) / 2;  // 加上宽度的一半得到中心点
-            }
 
             return (
               <ConnectionLine
                 key={conn.id}
                 connection={conn}
-                sourceNode={{ ...sourceNode, x: sourceX }}
-                targetNode={{ ...targetNode, x: targetX }}
+                sourceNode={sourceNode}
+                targetNode={targetNode}
                 showInterval={settings.showIntervals}
                 verticalOffset={index}
-                isSelected={selectedConnectionIds.includes(conn.id)}
+                isSelected={selectedConnectionIdSet.has(conn.id)}
                 onClick={(e?: any) => {
                   if (currentTool === 'select') {
-                    // 问题14：支持Ctrl多选
                     const isMulti = e?.evt?.ctrlKey || e?.evt?.metaKey;
                     selectConnection(conn.id, isMulti);
-                    clearSelection();  // 取消节点选择
-                    selectConstraint(null);  // 取消约束选择
+                    clearSelection();
+                    selectConstraint(null);
                   }
                 }}
               />
             );
           })}
 
-          {/* 约束线（虚线，无箭头，需求7&8）- 问题5修复：显示间隔周期 */}
+          {/* 约束线 - 使用预计算的节点坐标 */}
           {settings.showConstraints &&
             constraints.map((constraint, index) => {
-              const sourceNode = nodes.find((n) => n.id === constraint.sourceNodeId);
-              const targetNode = nodes.find((n) => n.id === constraint.targetNodeId);
+              const sourceNode = calculatedNodeById.get(constraint.sourceNodeId);
+              const targetNode = calculatedNodeById.get(constraint.targetNodeId);
               if (!sourceNode || !targetNode) return null;
 
-              // 动态计算节点X坐标（修复：长方形节点使用中心点坐标）
-              let sourceX = dateToX(sourceNode.date, startDate, unitWidth, 0, timelineView);
-              if (sourceNode.type === 'rectangle') {
-                sourceX += (sourceNode.width || 100) / 2;
-              }
-
-              let targetX = dateToX(targetNode.date, startDate, unitWidth, 0, timelineView);
-              if (targetNode.type === 'rectangle') {
-                targetX += (targetNode.width || 100) / 2;
-              }
-
-              // 构造一个模拟的 Connection 对象用于 ConnectionLine
               const constraintAsConnection = {
                 id: constraint.id,
                 sourceNodeId: constraint.sourceNodeId,
@@ -1075,8 +1103,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
                 <ConnectionLine
                   key={`constraint-${constraint.id}`}
                   connection={constraintAsConnection}
-                  sourceNode={{ ...sourceNode, x: sourceX }}
-                  targetNode={{ ...targetNode, x: targetX }}
+                  sourceNode={sourceNode}
+                  targetNode={targetNode}
                   showInterval={settings.showIntervals}
                   isConstraintLine={true}
                   verticalOffset={-index - 1}
@@ -1096,14 +1124,13 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           {/* 节点 */}
           {nodes.map(renderNode)}
 
-          {/* 泳道冻结覆盖层 */}
-          {frozenSwimlaneCount > 0 && scrollY > 0 && (() => {
-            const scrollYLogical = scrollY / settings.zoom;
-            const frozenBottom = HEADER_HEIGHT + frozenAreaHeight;
+          {/* 时间轴置顶 + 泳道冻结覆盖层（始终挂载，scroll handler 命令式控制 visible/y） */}
+          {(() => {
+            const frozenBottom = HEADER_HEIGHT + (frozenSwimlaneCount > 0 ? frozenAreaHeight : 0);
             return (
-              <Group y={scrollYLogical}>
-                {/* 白色底覆盖滚动内容 */}
-                <Rect x={0} y={0} width={totalWidth} height={frozenBottom} fill="#ffffff" />
+              <Group ref={frozenGroupRef} y={0} visible={false}>
+                {/* 白色底覆盖滚动内容（至少覆盖 header 区域） */}
+                <Rect x={0} y={0} width={totalWidth} height={Math.max(HEADER_HEIGHT, frozenBottom)} fill="#ffffff" />
 
                 {/* 重绘年份表头 */}
                 {(() => {
@@ -1284,6 +1311,8 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
           )}
         </Layer>
       </Stage>
+          </div>
+        </div>
 
       {/* 需求22：拖拽时的日期提示固定在页面居中位置 */}
       {dragTooltip && (
@@ -1294,26 +1323,6 @@ export const PlannerCanvas = forwardRef<PlannerCanvasRef, PlannerCanvasProps>(
         </div>
       )}
 
-      {/* 需求3C：悬停信息卡 */}
-      {hoverTooltip && (
-        <div
-          className="absolute bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 z-50 pointer-events-none text-xs"
-          style={{
-            left: hoverTooltip.x + 12,
-            top: hoverTooltip.y - 10,
-            maxWidth: 200,
-          }}
-        >
-          <div className="font-semibold text-gray-800">{hoverTooltip.node.name}</div>
-          <div className="text-gray-500 mt-0.5">
-            {formatShortDate(hoverTooltip.node.date)}
-            {hoverTooltip.node.endDate && ` - ${formatShortDate(hoverTooltip.node.endDate)}`}
-          </div>
-          <div className="text-gray-400 mt-0.5">
-            {swimlanes.find(s => s.id === hoverTooltip.node.swimlaneId)?.name || ''}
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Diamond,
   Triangle,
-  Square,
   ZoomIn,
   ZoomOut,
   Copy,
@@ -33,6 +32,7 @@ import {
   ArrowRight,
   Home,
   ClipboardPaste,
+  MessageSquare,
 } from 'lucide-react';
 import { useCanvasStore } from '../../stores/canvasStore';
 import { LoginButton } from '../Auth/LoginButton';
@@ -89,6 +89,8 @@ interface MainToolbarProps {
   onOpenVersionHistory: () => void;
   onOpenConnectionPanel?: () => void;  // 问题10：打开连线清单面板
   onPasteJSON?: () => void;  // 需求6：粘贴 JSON 导入
+  onToggleChat?: () => void;
+  showChat?: boolean;
   showConstraintPanel?: boolean;
   showVersionHistory?: boolean;
   showConnectionPanel?: boolean;  // 问题10：连线清单面板状态
@@ -107,6 +109,8 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
   onOpenVersionHistory,
   onOpenConnectionPanel,
   onPasteJSON,
+  onToggleChat,
+  showChat,
   showConstraintPanel,
   showVersionHistory,
   showConnectionPanel,
@@ -206,9 +210,9 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
   // 问题10：连接线不再在 tools 数组中，改为单独的下拉菜单
   const tools: { type: ToolType; icon: React.ReactNode; label: string }[] = [
     { type: 'select', icon: <MousePointer2 size={18} />, label: '选择 (V)' },
-    { type: 'diamond', icon: <Diamond size={18} />, label: '菱形节点 (D)' },
-    { type: 'pentagon', icon: <Home size={18} />, label: '阀门节点 (G)' },
-    { type: 'rectangle', icon: <Square size={18} />, label: '长方形节点 (R)' },
+    { type: 'diamond', icon: <Diamond size={18} />, label: '节点 (D)' },
+    { type: 'pentagon', icon: <Home size={18} />, label: '里程碑 (G)' },
+    { type: 'rectangle', icon: <svg width="18" height="18" viewBox="0 0 18 18"><circle cx="3" cy="9" r="2.5" fill="currentColor"/><line x1="5.5" y1="9" x2="12.5" y2="9" stroke="currentColor" strokeWidth="2"/><circle cx="15" cy="9" r="2.5" fill="currentColor"/></svg>, label: '活动 (R)' },
   ];
 
   const moreShapes = [
@@ -530,6 +534,19 @@ export const MainToolbar: React.FC<MainToolbarProps> = ({
 
       {/* 右侧空白区域 */}
       <div className="flex-1" />
+
+      {/* AI 助手 */}
+      {onToggleChat && (
+        <>
+          <ToolButton
+            icon={<MessageSquare size={18} />}
+            label="AI 助手"
+            active={showChat}
+            onClick={onToggleChat}
+          />
+          <div className="toolbar-divider" />
+        </>
+      )}
 
       {/* 飞书登录按钮 */}
       <LoginButton />

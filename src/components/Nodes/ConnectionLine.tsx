@@ -27,7 +27,10 @@ export const ConnectionLine: React.FC<ConnectionLineProps> = ({
   isSelected = false,
   onClick,
 }) => {
-  const { settings, updateConnectionPath, updateConnectionLabelOffset, updateConstraintLabelOffset } = useCanvasStore();
+  const settings = useCanvasStore((s) => s.settings);
+  const updateConnectionPath = useCanvasStore((s) => s.updateConnectionPath);
+  const updateConnectionLabelOffset = useCanvasStore((s) => s.updateConnectionLabelOffset);
+  const updateConstraintLabelOffset = useCanvasStore((s) => s.updateConstraintLabelOffset);
   const isDashed = connection.style === 'dashed';
   const isCriticalPath = connection.isCriticalPath;
 

@@ -28,10 +28,8 @@ export const RectangleNode: React.FC<RectangleNodeProps> = ({
   const groupRef = useRef<any>(null);
   const width = node.width || 100;
   const selectedHeight = 32;
-  const capsuleHeight = 16;
   const handleWidth = 12;
 
-  const [isHovered, setIsHovered] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizingSide, setResizingSide] = useState<'left' | 'right' | null>(null);
   const initialLeftEdgeRef = useRef(0);
@@ -94,9 +92,6 @@ export const RectangleNode: React.FC<RectangleNodeProps> = ({
     ? `${formatShortDate(node.date)} - ${formatShortDate(node.endDate)}`
     : formatShortDate(node.date);
 
-  const renderMode: 'selected' | 'hover' | 'default' =
-    isSelected ? 'selected' : isHovered ? 'hover' : 'default';
-
   return (
     <Group
       ref={groupRef}
@@ -105,8 +100,6 @@ export const RectangleNode: React.FC<RectangleNodeProps> = ({
       draggable={!isResizing}
       onClick={onClick}
       onTap={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { if (!isResizing) setIsHovered(false); }}
       onDragMove={(e) => {
         if (isResizing) return;
         const pos = e.target.position();
@@ -128,33 +121,35 @@ export const RectangleNode: React.FC<RectangleNodeProps> = ({
         fill="transparent"
       />
 
-      {/* ===== 默认态：细线段 + 名称 ===== */}
-      {renderMode === 'default' && (
+      {/* ===== 默认态：细线段 + 名称 + 日期 ===== */}
+      {!isSelected && (
         <>
-          <Text
-            text={node.name}
-            fontSize={10}
-            fill="#374151"
-            x={-width / 2}
-            y={-12}
-            width={width}
-            align="left"
-            fontStyle="500"
-          />
           <Line
-            points={[-width / 2, 2, width / 2, 2]}
+            points={[-width / 2, 0, width / 2, 0]}
             stroke={fillColor}
             strokeWidth={2}
           />
-          <Circle x={-width / 2} y={2} radius={3} fill={fillColor} />
-          <Circle x={width / 2} y={2} radius={3} fill={fillColor} />
+          <Circle x={-width / 2} y={0} radius={3} fill={fillColor} />
+          <Circle x={width / 2} y={0} radius={3} fill={fillColor} />
+          <Text
+            text={`${node.name}  ${dateText}`}
+            fontSize={10}
+            fill="#374151"
+            x={-width / 2}
+            y={4}
+            width={width}
+            align="left"
+            fontStyle="500"
+            ellipsis={true}
+            wrap="none"
+          />
 
           {isConnectionStart && (
             <Rect
               x={-width / 2 - 4}
-              y={-16}
+              y={-8}
               width={width + 8}
-              height={24}
+              height={32}
               fill="transparent"
               stroke="#FF9500"
               strokeWidth={2}
@@ -165,60 +160,8 @@ export const RectangleNode: React.FC<RectangleNodeProps> = ({
         </>
       )}
 
-      {/* ===== Hover 态：胶囊 + 日期 ===== */}
-      {renderMode === 'hover' && (
-        <>
-          <Rect
-            x={-width / 2}
-            y={-capsuleHeight / 2}
-            width={width}
-            height={capsuleHeight}
-            fill={fillColor}
-            cornerRadius={capsuleHeight / 2}
-            shadowColor="rgba(0,0,0,0.15)"
-            shadowBlur={4}
-            shadowOffset={{ x: 0, y: 1 }}
-          />
-          <Text
-            text={node.name}
-            fontSize={11}
-            fill="#ffffff"
-            x={-width / 2 + 8}
-            y={-capsuleHeight / 2}
-            width={width - 16}
-            height={capsuleHeight}
-            align="center"
-            verticalAlign="middle"
-            fontStyle="500"
-          />
-          <Text
-            text={dateText}
-            fontSize={9}
-            fill="#9ca3af"
-            x={-width / 2}
-            y={capsuleHeight / 2 + 2}
-            width={width}
-            align="center"
-          />
-
-          {isConnectionStart && (
-            <Rect
-              x={-width / 2 - 4}
-              y={-capsuleHeight / 2 - 4}
-              width={width + 8}
-              height={capsuleHeight + 8}
-              fill="transparent"
-              stroke="#FF9500"
-              strokeWidth={2}
-              cornerRadius={capsuleHeight / 2 + 4}
-              dash={[4, 4]}
-            />
-          )}
-        </>
-      )}
-
       {/* ===== 选中态：完整矩形 + 拖拽手柄 ===== */}
-      {renderMode === 'selected' && (
+      {isSelected && (
         <>
           {/* 日期白底 */}
           {(() => {

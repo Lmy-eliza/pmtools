@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Group, Line, Text, Rect } from 'react-konva';
+import { Group, Line, Text } from 'react-konva';
 import { formatShortDate } from '../../utils/dateUtils';
 import type { PlanNode } from '../../types';
 import { getStatusColor } from '../../utils/statusUtils';
@@ -71,26 +71,6 @@ export const DiamondNode: React.FC<DiamondNodeProps> = ({
       }}
       style={{ cursor: 'pointer' }}
     >
-      {/* 日期白底 */}
-      <Rect
-        x={-32}
-        y={-diamondHeight - 18 - 2}
-        width={64}
-        height={14}
-        fill="rgba(255,255,255,0.85)"
-        cornerRadius={3}
-      />
-      {/* 日期显示在节点上方 */}
-      <Text
-        text={formatShortDate(node.date)}
-        fontSize={10}
-        fill="#6b7280"
-        y={-diamondHeight - 18}
-        width={60}
-        offsetX={30}
-        align="center"
-      />
-
       {/* 选中/连线起点高亮 */}
       {(isSelected || isConnectionStart) && (
         <Line
@@ -108,30 +88,30 @@ export const DiamondNode: React.FC<DiamondNodeProps> = ({
         points={diamondPoints}
         closed
         fill={getStatusColor(node.color, node.status)}
-        shadowColor="rgba(0,0,0,0.2)"
-        shadowBlur={4}
-        shadowOffset={{ x: 0, y: 2 }}
       />
 
-      {/* 名称白底 */}
-      <Rect
-        x={-42}
-        y={diamondHeight + 8 - 1}
-        width={84}
-        height={16}
-        fill="rgba(255,255,255,0.85)"
-        cornerRadius={3}
-      />
-      {/* 节点名称 */}
+      {/* 节点名称（居中，5字/行，最多2行+省略号） */}
       <Text
-        text={node.name}
-        fontSize={11}
+        text={node.name.length > 10 ? node.name.slice(0, 10) + '…' : node.name}
+        fontSize={10}
         fill="#1d1d1f"
-        y={diamondHeight + 8}
-        width={80}
-        offsetX={40}
+        y={node.name.length > 5 ? -12 : -6}
+        width={60}
+        offsetX={30}
         align="center"
         fontStyle="500"
+        wrap="word"
+        lineHeight={1.3}
+      />
+      {/* 日期（名称下方） */}
+      <Text
+        text={formatShortDate(node.date)}
+        fontSize={9}
+        fill="#6b7280"
+        y={node.name.length > 5 ? 10 : 6}
+        width={60}
+        offsetX={30}
+        align="center"
       />
     </Group>
   );

@@ -138,6 +138,14 @@ export function importFromJSON(json: string): ProjectData {
     throw new Error(`JSON 格式验证失败：\n${validation.errors.join('\n')}`);
   }
 
+  // 归一化：非阀点节点的 pentagon → diamond（兼容旧 JSON）
+  const GATE_NAME_PATTERN = /^G\d+$|^GTC$|^EOP$/;
+  data.nodes.forEach((n: any) => {
+    if (n.type === 'pentagon' && !GATE_NAME_PATTERN.test(n.name)) {
+      n.type = 'diamond';
+    }
+  });
+
   return {
     ...data,
     schemaVersion: data.schemaVersion || undefined,

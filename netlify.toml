@@ -3,6 +3,9 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[dev]
+  targetPort = 5173
+
 # Netlify Functions 代理（放在 catch-all 之前，优先匹配）
 [[redirects]]
   from = "/api/*"
