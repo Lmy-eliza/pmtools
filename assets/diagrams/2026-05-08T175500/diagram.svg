@@ -1,0 +1,534 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 2800" width="2400" height="2800">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a73e8;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6c5ce7;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4edda"/>
+      <stop offset="100%" style="stop-color:#c3e6cb"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff3cd"/>
+      <stop offset="100%" style="stop-color:#ffeaa7"/>
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f3e5f5"/>
+      <stop offset="100%" style="stop-color:#e1bee7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== 标题区 ===== -->
+  <rect x="0" y="0" width="2400" height="80" fill="url(#headerGrad)" rx="0"/>
+  <text x="1200" y="50" font-size="28" fill="white" text-anchor="middle" font-weight="bold">车型项目管理部AI数字员工应用点规划地图</text>
+
+  <!-- ===== 第一区：管理域全景 ===== -->
+  <rect x="30" y="100" width="2340" height="480" fill="white" stroke="#e0e0e0" stroke-width="1" rx="8"/>
+  <text x="50" y="130" font-size="16" fill="#1a73e8" font-weight="bold">第一区：项目管理业务全景</text>
+
+  <!-- 里程碑时间轴 -->
+  <rect x="180" y="145" width="2160" height="50" fill="#f8f9fa" rx="4"/>
+  <text x="60" y="175" font-size="13" fill="#666" font-weight="bold">项目里程碑</text>
+
+  <!-- G10-GTC标记 -->
+  <polygon points="230,155 240,150 250,155 250,180 230,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="240" y="198" font-size="10" fill="#333" text-anchor="middle">G10</text>
+  <text x="240" y="210" font-size="8" fill="#666" text-anchor="middle">商业论证</text>
+
+  <polygon points="430,155 440,150 450,155 450,180 430,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="440" y="198" font-size="10" fill="#333" text-anchor="middle">G9</text>
+  <text x="440" y="210" font-size="8" fill="#666" text-anchor="middle">项目预研</text>
+
+  <polygon points="630,155 640,150 650,155 650,180 630,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="640" y="198" font-size="10" fill="#333" text-anchor="middle">G8</text>
+  <text x="640" y="210" font-size="8" fill="#666" text-anchor="middle">项目立项</text>
+
+  <polygon points="830,155 840,150 850,155 850,180 830,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="840" y="198" font-size="10" fill="#333" text-anchor="middle">G7</text>
+  <text x="840" y="210" font-size="8" fill="#666" text-anchor="middle">设计方案</text>
+
+  <polygon points="1030,155 1040,150 1050,155 1050,180 1030,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="1040" y="198" font-size="10" fill="#333" text-anchor="middle">G6</text>
+  <text x="1040" y="210" font-size="8" fill="#666" text-anchor="middle">详细设计</text>
+
+  <polygon points="1230,155 1240,150 1250,155 1250,180 1230,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="1240" y="198" font-size="10" fill="#333" text-anchor="middle">G5</text>
+  <text x="1240" y="210" font-size="8" fill="#666" text-anchor="middle">ET启动</text>
+
+  <polygon points="1430,155 1440,150 1450,155 1450,180 1430,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="1440" y="198" font-size="10" fill="#333" text-anchor="middle">G4</text>
+  <text x="1440" y="210" font-size="8" fill="#666" text-anchor="middle">工程数据</text>
+
+  <polygon points="1630,155 1640,150 1650,155 1650,180 1630,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="1640" y="198" font-size="10" fill="#333" text-anchor="middle">G3</text>
+  <text x="1640" y="210" font-size="8" fill="#666" text-anchor="middle">PT1启动</text>
+
+  <polygon points="1830,155 1840,150 1850,155 1850,180 1830,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="1840" y="198" font-size="10" fill="#333" text-anchor="middle">G2</text>
+  <text x="1840" y="210" font-size="8" fill="#666" text-anchor="middle">PT2启动</text>
+
+  <polygon points="2030,155 2040,150 2050,155 2050,180 2030,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="2040" y="198" font-size="10" fill="#333" text-anchor="middle">G1</text>
+  <text x="2040" y="210" font-size="8" fill="#666" text-anchor="middle">SOP启动</text>
+
+  <polygon points="2230,155 2240,150 2250,155 2250,180 2230,180" fill="#f9ca24" stroke="#f0932b" stroke-width="1"/>
+  <text x="2240" y="198" font-size="10" fill="#333" text-anchor="middle">GTC</text>
+  <text x="2240" y="210" font-size="8" fill="#666" text-anchor="middle">发运判断</text>
+
+  <!-- 时间轴连线 -->
+  <line x1="250" y1="168" x2="2230" y2="168" stroke="#f0932b" stroke-width="2" stroke-dasharray="4,2"/>
+
+  <!-- 项目级任务 -->
+  <text x="60" y="250" font-size="13" fill="#333" font-weight="bold">项目级任务</text>
+
+  <rect x="180" y="235" width="2100" height="28" fill="#cfe2ff" rx="4" opacity="0.7"/>
+  <text x="1230" y="254" font-size="12" fill="#1a73e8" text-anchor="middle">项目计划管理</text>
+
+  <rect x="180" y="270" width="2100" height="28" fill="#cfe2ff" rx="4" opacity="0.7"/>
+  <text x="1230" y="289" font-size="12" fill="#1a73e8" text-anchor="middle">项目阀门管理</text>
+
+  <rect x="180" y="305" width="2100" height="28" fill="#cfe2ff" rx="4" opacity="0.7"/>
+  <text x="1230" y="324" font-size="12" fill="#1a73e8" text-anchor="middle">项目风险管理</text>
+
+  <rect x="380" y="340" width="1900" height="28" fill="#cfe2ff" rx="4" opacity="0.7"/>
+  <text x="1330" y="359" font-size="12" fill="#1a73e8" text-anchor="middle">项目审议与决策管理</text>
+
+  <rect x="1600" y="375" width="680" height="28" fill="#cfe2ff" rx="4" opacity="0.7"/>
+  <text x="1940" y="394" font-size="12" fill="#1a73e8" text-anchor="middle">项目交付管理</text>
+
+  <rect x="180" y="410" width="2100" height="28" fill="#cfe2ff" rx="4" opacity="0.7"/>
+  <text x="1230" y="429" font-size="12" fill="#1a73e8" text-anchor="middle">项目运营管理</text>
+
+  <!-- 项目子任务 -->
+  <text x="60" y="475" font-size="13" fill="#333" font-weight="bold">项目子任务</text>
+
+  <rect x="180" y="460" width="2100" height="22" fill="#e2e3e5" rx="3" opacity="0.5"/>
+  <text x="1230" y="476" font-size="10" fill="#495057" text-anchor="middle">项目成本管理</text>
+
+  <rect x="180" y="488" width="800" height="22" fill="#e2e3e5" rx="3" opacity="0.5"/>
+  <text x="580" y="504" font-size="10" fill="#495057" text-anchor="middle">产品定位与定义</text>
+
+  <rect x="180" y="516" width="1200" height="22" fill="#e2e3e5" rx="3" opacity="0.5"/>
+  <text x="780" y="532" font-size="10" fill="#495057" text-anchor="middle">造型开发</text>
+
+  <rect x="1400" y="516" width="880" height="22" fill="#e2e3e5" rx="3" opacity="0.5"/>
+  <text x="1840" y="532" font-size="10" fill="#495057" text-anchor="middle">变更管理</text>
+
+  <rect x="400" y="544" width="1000" height="22" fill="#e2e3e5" rx="3" opacity="0.5"/>
+  <text x="900" y="560" font-size="10" fill="#495057" text-anchor="middle">采购定点</text>
+
+  <!-- ===== 第二区：AI Agent详细业务流程 ===== -->
+  <rect x="30" y="600" width="2340" height="1650" fill="white" stroke="#e0e0e0" stroke-width="1" rx="8"/>
+  <text x="50" y="630" font-size="16" fill="#1a73e8" font-weight="bold">第二区：AI Agent业务流程详解</text>
+
+  <!-- === 目标管理Agent === -->
+  <rect x="50" y="650" width="2300" height="520" fill="#fafffe" stroke="#27ae60" stroke-width="2" rx="8"/>
+  <rect x="50" y="650" width="200" height="30" fill="#27ae60" rx="8"/>
+  <text x="150" y="670" font-size="13" fill="white" text-anchor="middle" font-weight="bold">目标管理Agent</text>
+  <text x="270" y="670" font-size="11" fill="#27ae60">AI渗透率: 50% | 业务活动子节点: 20 | 优先级: P0</text>
+
+  <!-- 业务阶段标题 -->
+  <rect x="80" y="695" width="700" height="35" fill="#d4edda" rx="6"/>
+  <text x="430" y="718" font-size="14" fill="#155724" text-anchor="middle" font-weight="bold">项目目标设定与对齐</text>
+
+  <rect x="800" y="695" width="600" height="35" fill="#d4edda" rx="6"/>
+  <text x="1100" y="718" font-size="14" fill="#155724" text-anchor="middle" font-weight="bold">动态监控</text>
+
+  <rect x="1420" y="695" width="900" height="35" fill="#d4edda" rx="6"/>
+  <text x="1870" y="718" font-size="14" fill="#155724" text-anchor="middle" font-weight="bold">项目目标达成情况及复盘</text>
+
+  <!-- 业务活动节点 - 阶段1 -->
+  <rect x="80" y="745" width="160" height="50" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="160" y="768" font-size="11" fill="#1b5e20" text-anchor="middle">项目目标</text>
+  <text x="160" y="783" font-size="11" fill="#1b5e20" text-anchor="middle">设定</text>
+
+  <rect x="260" y="745" width="160" height="50" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="340" y="768" font-size="11" fill="#1b5e20" text-anchor="middle">专业目标</text>
+  <text x="340" y="783" font-size="11" fill="#1b5e20" text-anchor="middle">设定</text>
+
+  <rect x="440" y="745" width="160" height="50" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="520" y="775" font-size="11" fill="#1b5e20" text-anchor="middle">目标对齐</text>
+
+  <!-- 箭头连接 -->
+  <polyline points="240,770 260,770" fill="none" stroke="#4caf50" stroke-width="2" marker-end="url(#arrow)"/>
+  <polyline points="420,770 440,770" fill="none" stroke="#4caf50" stroke-width="2"/>
+  <polyline points="600,770 620,770" fill="none" stroke="#4caf50" stroke-width="2"/>
+
+  <!-- 业务活动节点 - 阶段2 -->
+  <rect x="820" y="745" width="160" height="50" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="900" y="768" font-size="11" fill="#1b5e20" text-anchor="middle">进度数据</text>
+  <text x="900" y="783" font-size="11" fill="#1b5e20" text-anchor="middle">采集</text>
+
+  <rect x="1000" y="745" width="160" height="50" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="6"/>
+  <text x="1080" y="768" font-size="11" fill="#856404" text-anchor="middle">数据分析与</text>
+  <text x="1080" y="783" font-size="11" fill="#856404" text-anchor="middle">风险识别</text>
+
+  <rect x="1180" y="745" width="160" height="50" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="6"/>
+  <text x="1260" y="768" font-size="11" fill="#856404" text-anchor="middle">重大风险应</text>
+  <text x="1260" y="783" font-size="11" fill="#856404" text-anchor="middle">对提案</text>
+
+  <!-- 业务活动节点 - 阶段3 -->
+  <rect x="1440" y="745" width="160" height="50" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="6"/>
+  <text x="1520" y="775" font-size="11" fill="#856404" text-anchor="middle">提案审批</text>
+
+  <rect x="1620" y="745" width="160" height="50" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="1700" y="768" font-size="11" fill="#1b5e20" text-anchor="middle">项目目标</text>
+  <text x="1700" y="783" font-size="11" fill="#1b5e20" text-anchor="middle">达成情况</text>
+
+  <rect x="1800" y="745" width="160" height="50" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="1880" y="775" font-size="11" fill="#1b5e20" text-anchor="middle">经验总结</text>
+
+  <rect x="1980" y="745" width="160" height="50" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1" rx="6"/>
+  <text x="2060" y="768" font-size="11" fill="#4a148c" text-anchor="middle">团队评价</text>
+  <text x="2060" y="783" font-size="11" fill="#4a148c" text-anchor="middle">与考核</text>
+
+  <!-- 子节点描述行 -->
+  <text x="160" y="820" font-size="9" fill="#555" text-anchor="middle">对齐战略需求</text>
+  <text x="160" y="832" font-size="9" fill="#555" text-anchor="middle">明确目标模板</text>
+  <text x="160" y="844" font-size="9" fill="#27ae60" text-anchor="middle">①</text>
+
+  <text x="340" y="820" font-size="9" fill="#555" text-anchor="middle">依据组织架构</text>
+  <text x="340" y="832" font-size="9" fill="#555" text-anchor="middle">分解至专业</text>
+  <text x="340" y="844" font-size="9" fill="#27ae60" text-anchor="middle">①</text>
+
+  <text x="520" y="820" font-size="9" fill="#555" text-anchor="middle">专业调整确认</text>
+  <text x="520" y="832" font-size="9" fill="#555" text-anchor="middle">发起对齐</text>
+  <text x="520" y="844" font-size="9" fill="#27ae60" text-anchor="middle">③⑤</text>
+
+  <text x="900" y="820" font-size="9" fill="#555" text-anchor="middle">定期抓取系统</text>
+  <text x="900" y="832" font-size="9" fill="#555" text-anchor="middle">数据清洗标准化</text>
+  <text x="900" y="844" font-size="9" fill="#27ae60" text-anchor="middle">②</text>
+
+  <text x="1080" y="820" font-size="9" fill="#555" text-anchor="middle">偏差计算</text>
+  <text x="1080" y="832" font-size="9" fill="#555" text-anchor="middle">风险等级判定</text>
+  <text x="1080" y="844" font-size="9" fill="#f39c12" text-anchor="middle">③④</text>
+
+  <text x="1260" y="820" font-size="9" fill="#555" text-anchor="middle">提示责任专业</text>
+  <text x="1260" y="832" font-size="9" fill="#555" text-anchor="middle">提交原因分析</text>
+  <text x="1260" y="844" font-size="9" fill="#f39c12" text-anchor="middle">③④</text>
+
+  <text x="1520" y="820" font-size="9" fill="#555" text-anchor="middle">机器预审</text>
+  <text x="1520" y="832" font-size="9" fill="#555" text-anchor="middle">给出决策建议</text>
+  <text x="1520" y="844" font-size="9" fill="#f39c12" text-anchor="middle">⑤④③</text>
+
+  <text x="1700" y="820" font-size="9" fill="#555" text-anchor="middle">汇总全生命周期</text>
+  <text x="1700" y="832" font-size="9" fill="#555" text-anchor="middle">目标达成情况</text>
+  <text x="1700" y="844" font-size="9" fill="#27ae60" text-anchor="middle">②③</text>
+
+  <text x="1880" y="820" font-size="9" fill="#555" text-anchor="middle">AI生成总结</text>
+  <text x="1880" y="832" font-size="9" fill="#555" text-anchor="middle">纳入知识库</text>
+  <text x="1880" y="844" font-size="9" fill="#27ae60" text-anchor="middle">④①</text>
+
+  <text x="2060" y="820" font-size="9" fill="#555" text-anchor="middle">人工评价</text>
+  <text x="2060" y="832" font-size="9" fill="#555" text-anchor="middle">传递绩效系统</text>
+  <text x="2060" y="844" font-size="9" fill="#9c27b0" text-anchor="middle">⑤</text>
+
+  <!-- AI渗透率标注 -->
+  <rect x="80" y="860" width="2260" height="30" fill="#f8f9fa" rx="4"/>
+  <circle cx="160" cy="875" r="8" fill="#27ae60"/>
+  <text x="180" y="879" font-size="9" fill="#333">AI+人(33%)</text>
+  <circle cx="340" cy="875" r="8" fill="#27ae60"/>
+  <text x="360" y="879" font-size="9" fill="#333">AI+人(33%)</text>
+  <circle cx="520" cy="875" r="8" fill="#f39c12"/>
+  <text x="540" y="879" font-size="9" fill="#333">AI+人(50%)</text>
+  <circle cx="900" cy="875" r="8" fill="#27ae60"/>
+  <text x="920" y="879" font-size="9" fill="#333">AI(100%)</text>
+  <circle cx="1080" cy="875" r="8" fill="#27ae60"/>
+  <text x="1100" y="879" font-size="9" fill="#333">AI(100%)</text>
+  <circle cx="1260" cy="875" r="8" fill="#f39c12"/>
+  <text x="1280" y="879" font-size="9" fill="#333">AI+人(50%)</text>
+  <circle cx="1520" cy="875" r="8" fill="#f39c12"/>
+  <text x="1540" y="879" font-size="9" fill="#333">AI+人(50%)</text>
+  <circle cx="1700" cy="875" r="8" fill="#27ae60"/>
+  <text x="1720" y="879" font-size="9" fill="#333">AI(100%)</text>
+  <circle cx="1880" cy="875" r="8" fill="#f39c12"/>
+  <text x="1900" y="879" font-size="9" fill="#333">AI+人(50%)</text>
+  <circle cx="2060" cy="875" r="8" fill="#9c27b0"/>
+  <text x="2080" y="879" font-size="9" fill="#333">人工(50%)</text>
+
+  <!-- 六大能力标注 -->
+  <rect x="80" y="900" width="2260" height="250" fill="#f0fdf4" rx="4" opacity="0.5"/>
+  <text x="100" y="920" font-size="11" fill="#27ae60" font-weight="bold">目标管理Agent 5大能力映射：</text>
+
+  <rect x="100" y="935" width="350" height="70" fill="white" stroke="#27ae60" stroke-width="1" rx="4"/>
+  <text x="115" y="955" font-size="11" fill="#27ae60" font-weight="bold">①智能生成</text>
+  <text x="115" y="972" font-size="9" fill="#555">自动生成并分解目标，生成</text>
+  <text x="115" y="985" font-size="9" fill="#555">数据、总结等，提高交付率</text>
+
+  <rect x="470" y="935" width="350" height="70" fill="white" stroke="#27ae60" stroke-width="1" rx="4"/>
+  <text x="485" y="955" font-size="11" fill="#27ae60" font-weight="bold">②智能审核</text>
+  <text x="485" y="972" font-size="9" fill="#555">自动抓取各系统实际数据</text>
+  <text x="485" y="985" font-size="9" fill="#555">完成清洗与标准化处理</text>
+
+  <rect x="840" y="935" width="350" height="70" fill="white" stroke="#27ae60" stroke-width="1" rx="4"/>
+  <text x="855" y="955" font-size="11" fill="#27ae60" font-weight="bold">③风险预警</text>
+  <text x="855" y="972" font-size="9" fill="#555">根据数据进行风险识别与</text>
+  <text x="855" y="985" font-size="9" fill="#555">预警，对到期任务提醒</text>
+
+  <rect x="1210" y="935" width="350" height="70" fill="white" stroke="#27ae60" stroke-width="1" rx="4"/>
+  <text x="1225" y="955" font-size="11" fill="#27ae60" font-weight="bold">④知识检索</text>
+  <text x="1225" y="972" font-size="9" fill="#555">从项目全生命周期总结</text>
+  <text x="1225" y="985" font-size="9" fill="#555">识别可标准化内容入库</text>
+
+  <rect x="1580" y="935" width="350" height="70" fill="white" stroke="#27ae60" stroke-width="1" rx="4"/>
+  <text x="1595" y="955" font-size="11" fill="#27ae60" font-weight="bold">⑤数据洞察</text>
+  <text x="1595" y="972" font-size="9" fill="#555">多维数据分析、指标计算</text>
+  <text x="1595" y="985" font-size="9" fill="#555">得出业务优化建议</text>
+
+  <!-- === 会议助手Agent === -->
+  <rect x="50" y="1190" width="2300" height="420" fill="#fffef5" stroke="#f39c12" stroke-width="2" rx="8"/>
+  <rect x="50" y="1190" width="200" height="30" fill="#f39c12" rx="8"/>
+  <text x="150" y="1210" font-size="13" fill="white" text-anchor="middle" font-weight="bold">会议助手Agent</text>
+  <text x="270" y="1210" font-size="11" fill="#f39c12">AI渗透率: 65% | 优先级: P0</text>
+
+  <!-- 业务阶段 -->
+  <rect x="80" y="1235" width="320" height="30" fill="#fff3cd" rx="4"/>
+  <text x="240" y="1255" font-size="12" fill="#856404" text-anchor="middle" font-weight="bold">会议预约请求</text>
+
+  <rect x="420" y="1235" width="320" height="30" fill="#fff3cd" rx="4"/>
+  <text x="580" y="1255" font-size="12" fill="#856404" text-anchor="middle" font-weight="bold">会议信息确认</text>
+
+  <rect x="760" y="1235" width="280" height="30" fill="#fff3cd" rx="4"/>
+  <text x="900" y="1255" font-size="12" fill="#856404" text-anchor="middle" font-weight="bold">创建会议</text>
+
+  <rect x="1060" y="1235" width="320" height="30" fill="#fff3cd" rx="4"/>
+  <text x="1220" y="1255" font-size="12" fill="#856404" text-anchor="middle" font-weight="bold">会议材料准备</text>
+
+  <rect x="1400" y="1235" width="400" height="30" fill="#fff3cd" rx="4"/>
+  <text x="1600" y="1255" font-size="12" fill="#856404" text-anchor="middle" font-weight="bold">会议纪要/待办生成</text>
+
+  <rect x="1820" y="1235" width="500" height="30" fill="#fff3cd" rx="4"/>
+  <text x="2070" y="1255" font-size="12" fill="#856404" text-anchor="middle" font-weight="bold">技术推进会决策效率统计</text>
+
+  <!-- 100%AI层 -->
+  <rect x="60" y="1275" width="35" height="120" fill="#c8e6c9" rx="4"/>
+  <text x="78" y="1340" font-size="10" fill="#1b5e20" text-anchor="middle" writing-mode="tb">100%AI</text>
+
+  <rect x="110" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="175" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">云文档解析</text>
+  <text x="175" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">自动提取议题</text>
+
+  <rect x="110" y="1325" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="175" y="1340" font-size="9" fill="#1b5e20" text-anchor="middle">参会人识别</text>
+  <text x="175" y="1352" font-size="9" fill="#1b5e20" text-anchor="middle">@提及解析</text>
+
+  <rect x="260" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="325" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">时间自动推断</text>
+  <text x="325" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">议题类型匹配</text>
+
+  <rect x="440" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="505" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">空闲时间查询</text>
+  <text x="505" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">忙闲分析</text>
+
+  <rect x="590" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="655" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">推荐时段生成</text>
+  <text x="655" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">排序优化</text>
+
+  <rect x="780" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="845" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">会议室查找</text>
+  <text x="845" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">容量匹配</text>
+
+  <rect x="930" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="995" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">日程创建</text>
+  <text x="995" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">API调用</text>
+
+  <rect x="1420" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="1485" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">会议纪要</text>
+  <text x="1485" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">待办生成</text>
+
+  <rect x="1840" y="1285" width="130" height="35" fill="#c8e6c9" stroke="#4caf50" stroke-width="1" rx="4"/>
+  <text x="1905" y="1300" font-size="9" fill="#1b5e20" text-anchor="middle">XPD自动记录</text>
+  <text x="1905" y="1312" font-size="9" fill="#1b5e20" text-anchor="middle">统计决策效率</text>
+
+  <!-- 人机协同层 -->
+  <rect x="60" y="1405" width="35" height="80" fill="#fff3cd" rx="4"/>
+  <text x="78" y="1450" font-size="10" fill="#856404" text-anchor="middle" writing-mode="tb">人机协同</text>
+
+  <rect x="110" y="1415" width="130" height="35" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="4"/>
+  <text x="175" y="1430" font-size="9" fill="#856404" text-anchor="middle">会议信息确认</text>
+  <text x="175" y="1442" font-size="9" fill="#856404" text-anchor="middle">会定室/议题</text>
+
+  <rect x="440" y="1415" width="130" height="35" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="4"/>
+  <text x="505" y="1430" font-size="9" fill="#856404" text-anchor="middle">多轮确认议定</text>
+  <text x="505" y="1442" font-size="9" fill="#856404" text-anchor="middle">核销人确认</text>
+
+  <rect x="780" y="1415" width="130" height="35" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="4"/>
+  <text x="845" y="1430" font-size="9" fill="#856404" text-anchor="middle">创建信息核对</text>
+  <text x="845" y="1442" font-size="9" fill="#856404" text-anchor="middle">结果确认</text>
+
+  <rect x="1560" y="1415" width="130" height="35" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="4"/>
+  <text x="1625" y="1430" font-size="9" fill="#856404" text-anchor="middle">PMO审核</text>
+  <text x="1625" y="1442" font-size="9" fill="#856404" text-anchor="middle">待办信息</text>
+
+  <rect x="1990" y="1415" width="130" height="35" fill="#fff3cd" stroke="#ffc107" stroke-width="1" rx="4"/>
+  <text x="2055" y="1430" font-size="9" fill="#856404" text-anchor="middle">PMO确认决策</text>
+  <text x="2055" y="1442" font-size="9" fill="#856404" text-anchor="middle">统计结果</text>
+
+  <!-- 人工完成层 -->
+  <rect x="60" y="1500" width="35" height="60" fill="#f3e5f5" rx="4"/>
+  <text x="78" y="1535" font-size="10" fill="#4a148c" text-anchor="middle" writing-mode="tb">人工</text>
+
+  <rect x="110" y="1510" width="100" height="30" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1" rx="4"/>
+  <text x="160" y="1530" font-size="9" fill="#4a148c" text-anchor="middle">云文档输入</text>
+
+  <rect x="440" y="1510" width="130" height="30" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1" rx="4"/>
+  <text x="505" y="1525" font-size="9" fill="#4a148c" text-anchor="middle">工作时间确认</text>
+  <text x="505" y="1537" font-size="9" fill="#4a148c" text-anchor="middle">调整需求</text>
+
+  <rect x="1080" y="1510" width="130" height="30" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1" rx="4"/>
+  <text x="1145" y="1530" font-size="9" fill="#4a148c" text-anchor="middle">用户材料输入</text>
+
+  <!-- === 占位Agent === -->
+  <rect x="50" y="1630" width="2300" height="200" fill="#f8f9fa" stroke="#6c757d" stroke-width="1" rx="8" stroke-dasharray="8,4"/>
+  <text x="70" y="1660" font-size="13" fill="#6c757d" font-weight="bold">其他Agent（规划中）</text>
+
+  <!-- 任务书编写Agent -->
+  <rect x="80" y="1680" width="700" height="60" fill="white" stroke="#6c5ce7" stroke-width="1.5" rx="6"/>
+  <text x="100" y="1700" font-size="12" fill="#6c5ce7" font-weight="bold">任务书编写Agent (P1)</text>
+  <text x="100" y="1718" font-size="10" fill="#555">资料收集解析 → 缺失信息补充 → 文档自动生成发布</text>
+  <text x="100" y="1732" font-size="9" fill="#6c5ce7">能力: ①智能生成 ④知识检索</text>
+
+  <!-- 计划智能编排Agent -->
+  <rect x="810" y="1680" width="700" height="60" fill="white" stroke="#00b894" stroke-width="1.5" rx="6"/>
+  <text x="830" y="1700" font-size="12" fill="#00b894" font-weight="bold">计划智能编排Agent (P1)</text>
+  <text x="830" y="1718" font-size="10" fill="#555">模板库管理 → 对话式计划生成 → 执行过程监控</text>
+  <text x="830" y="1732" font-size="9" fill="#00b894">能力: ①智能生成 ③风险预警 ⑤数据洞察</text>
+
+  <!-- 风险/交付Agent -->
+  <rect x="1540" y="1680" width="730" height="55" fill="white" stroke="#adb5bd" stroke-width="1" rx="6" stroke-dasharray="4,2"/>
+  <text x="1560" y="1700" font-size="12" fill="#6c757d" font-weight="bold">风险Agent (P2) — 待规划</text>
+  <text x="1560" y="1718" font-size="9" fill="#adb5bd">能力: ②智能审核 ③风险预警 ④知识检索</text>
+
+  <rect x="80" y="1750" width="730" height="60" fill="white" stroke="#e17055" stroke-width="1.5" rx="6"/>
+  <text x="100" y="1770" font-size="12" fill="#e17055" font-weight="bold">交付管理Agent (P1)</text>
+  <text x="100" y="1788" font-size="10" fill="#555">立项启动→指标定义→计划制定→项目评审→问题管理→交付验收→复盘优化</text>
+  <text x="100" y="1802" font-size="9" fill="#e17055">能力: ①智能生成 ②智能审核 ③风险预警 ⑤数据洞察</text>
+
+  <!-- 扩展提示 -->
+  <text x="1200" y="1810" font-size="11" fill="#adb5bd" text-anchor="middle">↓ 新增Agent可在此纵向扩展 ↓</text>
+
+  <!-- ===== 第三区：AI五大能力映射 ===== -->
+  <rect x="30" y="2270" width="2340" height="200" fill="white" stroke="#e0e0e0" stroke-width="1" rx="8"/>
+  <text x="50" y="2300" font-size="16" fill="#1a73e8" font-weight="bold">第三区：AI五大能力映射</text>
+
+  <rect x="60" y="2320" width="440" height="130" fill="#e8f5e9" stroke="#4caf50" stroke-width="1" rx="6"/>
+  <text x="280" y="2345" font-size="13" fill="#1b5e20" text-anchor="middle" font-weight="bold">①智能生成</text>
+  <text x="280" y="2370" font-size="10" fill="#555" text-anchor="middle">自动生成文档/材料/计划/报告</text>
+  <text x="280" y="2390" font-size="9" fill="#777" text-anchor="middle">应用点：任务书生成、计划编排</text>
+  <text x="280" y="2405" font-size="9" fill="#777" text-anchor="middle">会议纪要、数据看板</text>
+
+  <rect x="520" y="2320" width="440" height="130" fill="#e3f2fd" stroke="#2196f3" stroke-width="1" rx="6"/>
+  <text x="740" y="2345" font-size="13" fill="#0d47a1" text-anchor="middle" font-weight="bold">②智能审核</text>
+  <text x="740" y="2370" font-size="10" fill="#555" text-anchor="middle">合规性/完整性/一致性校验</text>
+  <text x="740" y="2390" font-size="9" fill="#777" text-anchor="middle">应用点：提案预审、材料审核</text>
+  <text x="740" y="2405" font-size="9" fill="#777" text-anchor="middle">目标对齐校验</text>
+
+  <rect x="980" y="2320" width="440" height="130" fill="#fff3e0" stroke="#ff9800" stroke-width="1" rx="6"/>
+  <text x="1200" y="2345" font-size="13" fill="#e65100" text-anchor="middle" font-weight="bold">③风险预警</text>
+  <text x="1200" y="2370" font-size="10" fill="#555" text-anchor="middle">风险识别与主动预警</text>
+  <text x="1200" y="2390" font-size="9" fill="#777" text-anchor="middle">应用点：进度偏差预警</text>
+  <text x="1200" y="2405" font-size="9" fill="#777" text-anchor="middle">风险等级判定、超期催办</text>
+
+  <rect x="1440" y="2320" width="440" height="130" fill="#fce4ec" stroke="#e91e63" stroke-width="1" rx="6"/>
+  <text x="1660" y="2345" font-size="13" fill="#880e4f" text-anchor="middle" font-weight="bold">④知识检索</text>
+  <text x="1660" y="2370" font-size="10" fill="#555" text-anchor="middle">经验检索与决策辅助</text>
+  <text x="1660" y="2390" font-size="9" fill="#777" text-anchor="middle">应用点：经验总结入库</text>
+  <text x="1660" y="2405" font-size="9" fill="#777" text-anchor="middle">模板推荐、案例检索</text>
+
+  <rect x="1900" y="2320" width="440" height="130" fill="#ede7f6" stroke="#673ab7" stroke-width="1" rx="6"/>
+  <text x="2120" y="2345" font-size="13" fill="#311b92" text-anchor="middle" font-weight="bold">⑤数据洞察</text>
+  <text x="2120" y="2370" font-size="10" fill="#555" text-anchor="middle">多维数据分析与可视化</text>
+  <text x="2120" y="2390" font-size="9" fill="#777" text-anchor="middle">应用点：目标达成分析</text>
+  <text x="2120" y="2405" font-size="9" fill="#777" text-anchor="middle">决策效率统计、排名看板</text>
+
+  <!-- ===== 第四区：Agent汇总表 ===== -->
+  <rect x="30" y="2490" width="2340" height="290" fill="white" stroke="#e0e0e0" stroke-width="1" rx="8"/>
+  <text x="50" y="2520" font-size="16" fill="#1a73e8" font-weight="bold">第四区：AI Agent汇总表</text>
+
+  <!-- 表头 -->
+  <rect x="60" y="2540" width="300" height="30" fill="#343a40" rx="4"/>
+  <text x="210" y="2560" font-size="11" fill="white" text-anchor="middle" font-weight="bold">AI Agent名称</text>
+
+  <rect x="370" y="2540" width="180" height="30" fill="#4caf50" rx="4"/>
+  <text x="460" y="2560" font-size="11" fill="white" text-anchor="middle">①智能生成</text>
+
+  <rect x="560" y="2540" width="180" height="30" fill="#2196f3" rx="4"/>
+  <text x="650" y="2560" font-size="11" fill="white" text-anchor="middle">②智能审核</text>
+
+  <rect x="750" y="2540" width="180" height="30" fill="#ff9800" rx="4"/>
+  <text x="840" y="2560" font-size="11" fill="white" text-anchor="middle">③风险预警</text>
+
+  <rect x="940" y="2540" width="180" height="30" fill="#e91e63" rx="4"/>
+  <text x="1030" y="2560" font-size="11" fill="white" text-anchor="middle">④知识检索</text>
+
+  <rect x="1130" y="2540" width="180" height="30" fill="#673ab7" rx="4"/>
+  <text x="1220" y="2560" font-size="11" fill="white" text-anchor="middle">⑤数据洞察</text>
+
+  <rect x="1320" y="2540" width="120" height="30" fill="#343a40" rx="4"/>
+  <text x="1380" y="2560" font-size="11" fill="white" text-anchor="middle">优先级</text>
+
+  <rect x="1450" y="2540" width="120" height="30" fill="#343a40" rx="4"/>
+  <text x="1510" y="2560" font-size="11" fill="white" text-anchor="middle">重要度</text>
+
+  <!-- 数据行 -->
+  <rect x="60" y="2580" width="300" height="30" fill="#f8f9fa" rx="2"/>
+  <text x="210" y="2600" font-size="11" fill="#333" text-anchor="middle">目标管理Agent</text>
+  <text x="460" y="2600" font-size="14" text-anchor="middle">●</text>
+  <text x="650" y="2600" font-size="14" text-anchor="middle">●</text>
+  <text x="840" y="2600" font-size="14" text-anchor="middle">●</text>
+  <text x="1030" y="2600" font-size="14" text-anchor="middle">●</text>
+  <text x="1220" y="2600" font-size="14" text-anchor="middle">●</text>
+  <text x="1380" y="2600" font-size="11" fill="#e74c3c" text-anchor="middle" font-weight="bold">P0</text>
+  <text x="1510" y="2600" font-size="11" text-anchor="middle">★★★★★</text>
+
+  <rect x="60" y="2615" width="300" height="30" fill="white" rx="2"/>
+  <text x="210" y="2635" font-size="11" fill="#333" text-anchor="middle">会议助手Agent</text>
+  <text x="460" y="2635" font-size="14" text-anchor="middle">●</text>
+  <text x="650" y="2635" font-size="14" text-anchor="middle">○</text>
+  <text x="840" y="2635" font-size="14" text-anchor="middle">○</text>
+  <text x="1030" y="2635" font-size="14" text-anchor="middle">○</text>
+  <text x="1220" y="2635" font-size="14" text-anchor="middle">●</text>
+  <text x="1380" y="2635" font-size="11" fill="#e74c3c" text-anchor="middle" font-weight="bold">P0</text>
+  <text x="1510" y="2635" font-size="11" text-anchor="middle">★★★★</text>
+
+  <rect x="60" y="2650" width="300" height="30" fill="#f8f9fa" rx="2"/>
+  <text x="210" y="2670" font-size="11" fill="#333" text-anchor="middle">任务书编写Agent</text>
+  <text x="460" y="2670" font-size="14" text-anchor="middle">●</text>
+  <text x="650" y="2670" font-size="14" text-anchor="middle">○</text>
+  <text x="840" y="2670" font-size="14" text-anchor="middle">○</text>
+  <text x="1030" y="2670" font-size="14" text-anchor="middle">●</text>
+  <text x="1220" y="2670" font-size="14" text-anchor="middle">○</text>
+  <text x="1380" y="2670" font-size="11" fill="#f39c12" text-anchor="middle" font-weight="bold">P1</text>
+  <text x="1510" y="2670" font-size="11" text-anchor="middle">★★★★</text>
+
+  <rect x="60" y="2685" width="300" height="30" fill="white" rx="2"/>
+  <text x="210" y="2705" font-size="11" fill="#333" text-anchor="middle">计划智能编排Agent</text>
+  <text x="460" y="2705" font-size="14" text-anchor="middle">●</text>
+  <text x="650" y="2705" font-size="14" text-anchor="middle">○</text>
+  <text x="840" y="2705" font-size="14" text-anchor="middle">●</text>
+  <text x="1030" y="2705" font-size="14" text-anchor="middle">●</text>
+  <text x="1220" y="2705" font-size="14" text-anchor="middle">●</text>
+  <text x="1380" y="2705" font-size="11" fill="#f39c12" text-anchor="middle" font-weight="bold">P1</text>
+  <text x="1510" y="2705" font-size="11" text-anchor="middle">★★★★</text>
+
+  <rect x="60" y="2720" width="300" height="30" fill="#f8f9fa" rx="2"/>
+  <text x="210" y="2740" font-size="11" fill="#333" text-anchor="middle">风险Agent</text>
+  <text x="460" y="2740" font-size="14" text-anchor="middle">○</text>
+  <text x="650" y="2740" font-size="14" text-anchor="middle">●</text>
+  <text x="840" y="2740" font-size="14" text-anchor="middle">●</text>
+  <text x="1030" y="2740" font-size="14" text-anchor="middle">●</text>
+  <text x="1220" y="2740" font-size="14" text-anchor="middle">○</text>
+  <text x="1380" y="2740" font-size="11" fill="#3498db" text-anchor="middle" font-weight="bold">P2</text>
+  <text x="1510" y="2740" font-size="11" text-anchor="middle">★★★</text>
+
+  <rect x="60" y="2755" width="300" height="30" fill="white" rx="2"/>
+  <text x="210" y="2775" font-size="11" fill="#333" text-anchor="middle">交付管理Agent</text>
+  <text x="460" y="2775" font-size="14" text-anchor="middle">●</text>
+  <text x="650" y="2775" font-size="14" text-anchor="middle">●</text>
+  <text x="840" y="2775" font-size="14" text-anchor="middle">●</text>
+  <text x="1030" y="2775" font-size="14" text-anchor="middle">○</text>
+  <text x="1220" y="2775" font-size="14" text-anchor="middle">●</text>
+  <text x="1380" y="2775" font-size="11" fill="#f39c12" text-anchor="middle" font-weight="bold">P1</text>
+  <text x="1510" y="2775" font-size="11" text-anchor="middle">★★★★</text>
+
+</svg>

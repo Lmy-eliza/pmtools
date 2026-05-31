@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+
+# Redirect /api/feishu/* to the feishu Netlify Function
+[[redirects]]
+  from = "/api/feishu/*"
+  to = "/.netlify/functions/feishu"
+  status = 200
+
+# SPA fallback: all other routes go to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

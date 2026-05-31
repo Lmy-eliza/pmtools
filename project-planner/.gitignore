@@ -30,20 +30,3 @@ dist-ssr
 .env
 .env.local
 .env.*.local
-
-# mkcert 本地 HTTPS 证书
-certs/
-*.pem
-
-# API Key 文件（严禁提交）
-docs/tmp_api_key_minimax.txt
-docs/Qwen_key.txt
-
-# Claude Code 缓存
-.claude/
-nul
-.D
-
-# 临时数据文件
-tmp/
-*.zip

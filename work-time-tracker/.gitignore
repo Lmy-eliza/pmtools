@@ -23,27 +23,16 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local Netlify folder
-.netlify
+# Claude Code 缓存
+.claude/
 
-# 环境变量（含飞书 AppID 等敏感信息）
+# Windows 系统文件
+nul
+
+# 环境变量（安全）
 .env
 .env.local
 .env.*.local
 
-# mkcert 本地 HTTPS 证书
-certs/
-*.pem
-
-# API Key 文件（严禁提交）
-docs/tmp_api_key_minimax.txt
-docs/Qwen_key.txt
-
-# Claude Code 缓存
-.claude/
-nul
-.D
-
-# 临时数据文件
-tmp/
-*.zip
+# Local Netlify folder
+.netlify

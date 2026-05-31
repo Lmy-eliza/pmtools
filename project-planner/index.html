@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>项目计划画板</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- 小鹏 HiAgent 智能助手 SDK -->
+    <script src="https://hiagent.x-peng.com/resources/product/llm/public/sdk/embedLite.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        try {
+          window._hiAgentClient = new HiagentWebSDK.WebLiteClient({
+            appKey: "d7aviaelvnd0kiio3vl0",
+            baseUrl: "https://hiagent.x-peng.com",
+            variables: {},
+          });
+        } catch (err) {
+          console.error('[HiAgent SDK] 初始化失败:', err);
+        }
+      });
+    </script>
+  </body>
+</html>

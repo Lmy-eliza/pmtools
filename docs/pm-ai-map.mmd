@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph G["G1-G9项目管理流程"]
+        G1[G1:项目预研批准]
+        G2[G2:项目立项批准]
+        G3[G3:ET启动]
+        G4[G4:PT1启动]
+        G5[G5:PT2启动]
+        G6[G6:模具设计与制造]
+        G7[G7:ET准备与制造]
+        G8[G8:项目交付管理]
+        G9[G9:发运判断]
+    end
+
+    subgraph AGENTS["AI Agent能力"]
+        TG[目标管理Agent]
+        MG[会议Agent]
+        RG[风险Agent]
+        CG[变更Agent]
+        KG[看板Agent]
+    end
+
+    G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7 --> G8 --> G9
+
+    TG -.-> G2
+    MG -.-> G2
+    RG -.-> G5
+    CG -.-> G2
+    KG -.-> G8
